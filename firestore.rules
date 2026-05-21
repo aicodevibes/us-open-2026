@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: participants
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - players: string[] (required, size 3)
+    //
+    // Collection: playerScores
+    // Document ID: playerName (string)
+    // Fields:
+    //   - playerName: string (required)
+    //   - day1: number (optional)
+    //   - day2: number (optional)
+    //   - day3: number (optional)
+    //   - day4: number (optional)
+    //   - isCut: boolean (optional)
+    //
+    // Collection: config
+    // Document ID: tournament
+    // Fields:
+    //   - dayMoneyAmount: number (optional)
+    //   - lastUpdated: timestamp (optional)
+    //   - cutline: number (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email_verified == true) &&
+        (request.auth.token.email == "jamesrobertlosinger@gmail.com" ||
+         request.auth.token.email == "jl4798@gmail.com" ||
+         request.auth.token.email == "aicodevibes@gmail.com" ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    // Participants: Anyone can read, only admin can write
+    match /participants/{participantId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Greedy Participants: Anyone can read, only admin can write
+    match /greedyParticipants/{participantId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // PlayerScores: Anyone can read, only admin can write
+    // NOTE: The /api/sync cron job uses the Firebase Admin SDK,
+    // which bypasses these rules entirely. No public writes needed.
+    match /playerScores/{playerName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // PlayoffScores: Anyone can read, only admin can write
+    match /playoffScores/{playerName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Config: Anyone can read, only admin can write
+    // NOTE: The /api/sync cron job uses the Firebase Admin SDK,
+    // which bypasses these rules entirely. No public writes needed.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profiles (for RBAC)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+  }
+}

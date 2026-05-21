@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "Participant": {
+      "title": "Participant",
+      "description": "A person participating in the draft.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the participant." },
+        "players": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of 3 drafted players."
+        }
+      },
+      "required": ["name", "players"]
+    },
+    "PlayerScore": {
+      "title": "PlayerScore",
+      "description": "The scores for a professional golfer.",
+      "type": "object",
+      "properties": {
+        "playerName": { "type": "string", "description": "Name of the golfer." },
+        "day1": { "type": "number", "description": "Score for day 1." },
+        "day2": { "type": "number", "description": "Score for day 2." },
+        "day3": { "type": "number", "description": "Score for day 3." },
+        "day4": { "type": "number", "description": "Score for day 4." }
+      },
+      "required": ["playerName"]
+    },
+    "TournamentConfig": {
+      "title": "TournamentConfig",
+      "description": "Global configuration for the tournament.",
+      "type": "object",
+      "properties": {
+        "dayMoneyAmount": { "type": "number", "description": "Amount of money for the lowest daily score." }
+      }
+    }
+  },
+  "firestore": {
+    "/participants/{participantId}": {
+      "schema": "Participant",
+      "description": "Collection of draft participants."
+    },
+    "/playerScores/{playerName}": {
+      "schema": "PlayerScore",
+      "description": "Collection of golfer scores."
+    },
+    "/config/tournament": {
+      "schema": "TournamentConfig",
+      "description": "Tournament configuration."
+    }
+  }
+}

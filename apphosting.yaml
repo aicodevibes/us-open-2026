@@ -1,0 +1,22 @@
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
+runConfig:
+  minInstances: 0
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
+
+# Environment variables and secrets.
+env:
+  # CRON_SECRET: Authorized secret for automated score updates via /api/sync.
+  # Use this value in your Cloud Scheduler URL: ?secret=usopen2026
+  - variable: CRON_SECRET
+    value: usopen2026
+    availability:
+      - RUNTIME
+
+  # To use Cloud Secret Manager for more sensitive keys (like API keys), 
+  # use the following format after running: firebase apphosting:secrets:set <secretName>
+  # - variable: MY_SECRET
+  #   secret: mySecretRef

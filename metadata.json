@@ -1,0 +1,5 @@
+{
+  "name": "US Open 2026 Dashboard",
+  "description": "A dashboard for tracking a 12-person US Open 2026 tournament draft with daily scoring and day money tracking.",
+  "requestFramePermissions": []
+}
