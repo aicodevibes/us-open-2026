@@ -43,7 +43,7 @@ export default function GreedyPage() {
 
   useEffect(() => {
     // Listen to greedy participants
-    const unsubP = onSnapshot(collection(db, 'greedyParticipants'), (snap) => {
+    const unsubP = onSnapshot(collection(db, 'usopen_greedyParticipants'), (snap) => {
       setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)));
       setLoading(false);
     }, (error) => {
@@ -53,7 +53,7 @@ export default function GreedyPage() {
     });
 
     // Reuse the same playerScores collection
-    const unsubS = onSnapshot(collection(db, 'playerScores'), (snap) => {
+    const unsubS = onSnapshot(collection(db, 'usopen_playerScores'), (snap) => {
       const sMap: Record<string, PlayerScore> = {};
       snap.docs.forEach(d => {
         const data = d.data() as PlayerScore;
@@ -66,7 +66,7 @@ export default function GreedyPage() {
     });
 
     // Tournament config for timestamp
-    const unsubC = onSnapshot(doc(db, 'config', 'tournament'), (snap) => {
+    const unsubC = onSnapshot(doc(db, 'usopen_config', 'tournament'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.lastUpdated) {

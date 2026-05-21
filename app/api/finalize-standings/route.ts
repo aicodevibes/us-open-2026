@@ -8,9 +8,9 @@ export async function POST() {
   try {
     // 1. Fetch participants and playerScores
     const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
-      adminDb.collection('participants').get(),
-      adminDb.collection('playerScores').get(),
-      adminDb.collection('config').doc('tournament').get(),
+      adminDb.collection('usopen_participants').get(),
+      adminDb.collection('usopen_playerScores').get(),
+      adminDb.collection('usopen_config').doc('tournament').get(),
     ]);
 
     const cutline = configSnap.data()?.cutline ?? null;
@@ -116,7 +116,7 @@ export async function POST() {
         
         // 7. Write to playoffScores collection
         const batch = adminDb.batch();
-        const playoffCollection = adminDb.collection('playoffScores');
+        const playoffCollection = adminDb.collection('usopen_playoffScores');
 
         // Optional: clear existing playoffScores first to ensure clean state
         const existingDocs = await playoffCollection.get();
@@ -137,7 +137,7 @@ export async function POST() {
     }
 
     // 8. Update tournament config to trigger frontend FinalStandings
-    await adminDb.collection('config').doc('tournament').update({
+    await adminDb.collection('usopen_config').doc('tournament').update({
         playoffComplete: true,
         lastUpdated: new Date()
     });

@@ -32,12 +32,12 @@ export async function POST(request: Request) {
     const batch = adminDb.batch();
 
     // 1. Clear existing participants (Optional, but good for clean seed)
-    const existingParticipants = await adminDb.collection('participants').get();
+    const existingParticipants = await adminDb.collection('usopen_participants').get();
     existingParticipants.forEach(doc => batch.delete(doc.ref));
 
     // 2. Add New Participants
     data.forEach((p: any) => {
-      const docRef = adminDb.collection('participants').doc();
+      const docRef = adminDb.collection('usopen_participants').doc();
       batch.set(docRef, {
         name: p.name,
         players: p.players
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     // 3. Initialize/Update Player Scores
     const allPlayers = Array.from(new Set(data.flatMap((p: any) => p.players)));
     allPlayers.forEach((playerName: any) => {
-      const playerRef = adminDb.collection('playerScores').doc(playerName);
+      const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
       batch.set(playerRef, {
         playerName,
         day1: 0,

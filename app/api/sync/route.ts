@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     const batch = adminDb.batch();
 
     results.forEach((item: any) => {
-      const docRef = adminDb.collection('playerScores').doc(item.playerName);
+      const docRef = adminDb.collection('usopen_playerScores').doc(item.playerName);
       batch.set(docRef, {
         playerName: item.playerName,
         day1: item.scores[0] ?? 0,
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     });
 
     // Update last updated timestamp
-    const configRef = adminDb.collection('config').doc('tournament');
+    const configRef = adminDb.collection('usopen_config').doc('tournament');
     batch.set(configRef, {
       lastUpdated: FieldValue.serverTimestamp()
     }, { merge: true });

@@ -86,16 +86,16 @@ export default function AdminPage() {
    * Populates the local state for the admin dashboard tables.
    */
   const loadData = async () => {
-    const pSnap = await getDocs(collection(db, 'participants'));
+    const pSnap = await getDocs(collection(db, 'usopen_participants'));
     setParticipants(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; players: string[] })));
 
-    const gSnap = await getDocs(collection(db, 'greedyParticipants'));
+    const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
     setGreedyParticipants(gSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; player: string })));
 
-    const sSnap = await getDocs(collection(db, 'playerScores'));
+    const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
     setScores(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; playerName: string; day1: number; day2: number; day3: number; day4: number; isCut?: boolean })));
 
-    const cSnap = await getDocs(collection(db, 'config'));
+    const cSnap = await getDocs(collection(db, 'usopen_config'));
     const configDoc = cSnap.docs.find(d => d.id === 'tournament');
     if (configDoc && configDoc.data().cutline !== undefined) {
       setCutline(configDoc.data().cutline === null ? '' : configDoc.data().cutline);
@@ -123,7 +123,7 @@ export default function AdminPage() {
     try {
       const batch = writeBatch(db);
       INITIAL_PARTICIPANTS.forEach((p) => {
-        const ref = doc(collection(db, 'participants'));
+        const ref = doc(collection(db, 'usopen_participants'));
         batch.set(ref, p);
       });
       await batch.commit();
@@ -144,7 +144,7 @@ export default function AdminPage() {
     try {
       const batch = writeBatch(db);
       INITIAL_GREEDY_PARTICIPANTS.forEach((p) => {
-        const ref = doc(collection(db, 'greedyParticipants'));
+        const ref = doc(collection(db, 'usopen_greedyParticipants'));
         batch.set(ref, p);
       });
       await batch.commit();
@@ -199,7 +199,7 @@ export default function AdminPage() {
         }
 
         const playerName = c.athlete.displayName || c.athlete.fullName;
-        const scoreRef = doc(db, 'playerScores', playerName);
+        const scoreRef = doc(db, 'usopen_playerScores', playerName);
         batch.set(scoreRef, {
           playerName,
           day1: rounds[0],
@@ -212,7 +212,7 @@ export default function AdminPage() {
       });
 
       // Update timestamp
-      const configRef = doc(db, 'config', 'tournament');
+      const configRef = doc(db, 'usopen_config', 'tournament');
       batch.set(configRef, { lastUpdated: serverTimestamp() }, { merge: true });
 
       await batch.commit();
@@ -258,9 +258,9 @@ export default function AdminPage() {
   const clearData = async () => {
     setLoading(true);
     try {
-      const pSnap = await getDocs(collection(db, 'participants'));
-      const sSnap = await getDocs(collection(db, 'playerScores'));
-      const cSnap = await getDocs(collection(db, 'config'));
+      const pSnap = await getDocs(collection(db, 'usopen_participants'));
+      const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
+      const cSnap = await getDocs(collection(db, 'usopen_config'));
       
       const batch = writeBatch(db);
       pSnap.docs.forEach(d => batch.delete(d.ref));
@@ -287,7 +287,7 @@ export default function AdminPage() {
       const batch = writeBatch(db);
       // We'll update the existing participants in the DB to match the INITIAL_PARTICIPANTS names
       // This fixes issues like 'Rory Mcllroy' -> 'Rory McIlroy'
-      const pSnap = await getDocs(collection(db, 'participants'));
+      const pSnap = await getDocs(collection(db, 'usopen_participants'));
       pSnap.docs.forEach((docSnap) => {
         const currentData = docSnap.data();
         const matchingInitial = INITIAL_PARTICIPANTS.find(p => p.name === currentData.name);
@@ -309,7 +309,7 @@ export default function AdminPage() {
     if (!confirm('Are you sure you want to delete this participant?')) return;
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'participants', id));
+      await deleteDoc(doc(db, 'usopen_participants', id));
       toast.success('Participant deleted');
       loadData();
     } catch (e) {
@@ -324,7 +324,7 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const playersArray = newPlayers.split(',').map(p => p.trim()).filter(p => p !== '');
-      await updateDoc(doc(db, 'participants', editingParticipant.id), {
+      await updateDoc(doc(db, 'usopen_participants', editingParticipant.id), {
         players: playersArray
       });
       toast.success('Players updated');
@@ -341,7 +341,7 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const val = cutline === '' ? null : Number(cutline);
-      await setDoc(doc(db, 'config', 'tournament'), { cutline: val }, { merge: true });
+      await setDoc(doc(db, 'usopen_config', 'tournament'), { cutline: val }, { merge: true });
       toast.success('Cutline updated');
     } catch (e) {
       toast.error('Failed to update cutline');

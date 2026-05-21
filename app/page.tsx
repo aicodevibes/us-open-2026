@@ -120,7 +120,7 @@ export default function Dashboard() {
   const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
-    const unsubP = onSnapshot(collection(db, 'participants'), (snap) => {
+    const unsubP = onSnapshot(collection(db, 'usopen_participants'), (snap) => {
       setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)));
       setLoading(false);
       setConnectionError(false);
@@ -130,7 +130,7 @@ export default function Dashboard() {
       setLoading(false);
     });
 
-    const unsubS = onSnapshot(collection(db, 'playerScores'), (snap) => {
+    const unsubS = onSnapshot(collection(db, 'usopen_playerScores'), (snap) => {
       const sMap: Record<string, PlayerScore> = {};
       snap.docs.forEach(d => {
         const data = d.data() as PlayerScore;
@@ -142,7 +142,7 @@ export default function Dashboard() {
       setConnectionError(true);
     });
 
-    const unsubC = onSnapshot(doc(db, 'config', 'tournament'), (snap) => {
+    const unsubC = onSnapshot(doc(db, 'usopen_config', 'tournament'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.lastUpdated) {
@@ -171,7 +171,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!playoffComplete) return;
 
-    const unsubPS = onSnapshot(collection(db, 'playoffScores'), (snap) => {
+    const unsubPS = onSnapshot(collection(db, 'usopen_playoffScores'), (snap) => {
       const psMap: Record<string, any> = {};
       snap.docs.forEach(d => {
         psMap[d.id] = d.data();
