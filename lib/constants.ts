@@ -9,8 +9,8 @@ export const TOURNAMENT_NAME = "US Open 2026";
 export const TOURNAMENT_SUBTITLE = "Draft Dashboard";
 
 // Dates (ISO 8601 Format / UTC) for the Countdown Clock
-export const TOURNAMENT_START_DATE = "2026-05-14T12:00:00Z"; // Thursday 8:00 AM EDT
-export const TOURNAMENT_END_DATE = "2026-05-17T22:00:00Z";   // Sunday evening conclusion
+export const TOURNAMENT_START_DATE = "2026-06-18T12:00:00Z"; // Thursday 8:00 AM EDT (June 18, 2026)
+export const TOURNAMENT_END_DATE = "2026-06-21T22:00:00Z";   // Sunday evening conclusion (June 21, 2026)
 
 // 3. Prizes & Pools (Main Tournament)
 export const PRIZES = [

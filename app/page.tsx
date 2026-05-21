@@ -518,47 +518,6 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Prize Money Section */}
-        <section className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
-          <Card className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
-            <CardHeader className="p-4 bg-[#00365F] text-white">
-              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-[#D4AF37]" />
-                Tournament Prize Pool
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {PRIZES.map((p) => (
-                  <div key={p.rank} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#00365F]/5">
-                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{p.rank}</p>
-                    <p className="text-lg font-serif font-bold text-[#001A2E]">{p.amount}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white border-2 border-[#D4AF37]/30 rounded-xl shadow-sm overflow-hidden">
-            <CardHeader className="p-4 bg-[#D4AF37] text-[#001A2E]">
-              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Daily Bonus Pool
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {DAILY_BONUSES.map((b) => (
-                  <div key={b.day} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#D4AF37]/10">
-                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{b.day}</p>
-                    <p className="text-lg font-serif font-bold text-[#001A2E]">{b.amount}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
         {/* Main Leaderboard Table */}
         <section className={`bg-white rounded-2xl shadow-xl border border-[#00365F]/10 overflow-hidden ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
           <div className="bg-[#00365F] text-white p-6 flex justify-between items-center">
@@ -767,6 +726,47 @@ export default function Dashboard() {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Prize Money Section */}
+        <section className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
+          <Card className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
+            <CardHeader className="p-4 bg-[#00365F] text-white">
+              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-[#D4AF37]" />
+                Tournament Prize Pool
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {PRIZES.map((p) => (
+                  <div key={p.rank} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#00365F]/5">
+                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{p.rank}</p>
+                    <p className="text-lg font-serif font-bold text-[#001A2E]">{p.amount}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-2 border-[#D4AF37]/30 rounded-xl shadow-sm overflow-hidden">
+            <CardHeader className="p-4 bg-[#D4AF37] text-[#001A2E]">
+              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Daily Bonus Pool
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {DAILY_BONUSES.map((b) => (
+                  <div key={b.day} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#D4AF37]/10">
+                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{b.day}</p>
+                    <p className="text-lg font-serif font-bold text-[#001A2E]">{b.amount}</p>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </section>
