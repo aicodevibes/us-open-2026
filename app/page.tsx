@@ -4,94 +4,13 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, DollarSign, Loader2, TrendingDown, Info, RefreshCw, Timer, Wallet } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Trophy, DollarSign, Loader2, Info, RefreshCw, Wallet } from 'lucide-react';
 import { FinalStandings } from '@/components/FinalStandings';
-import { PRIZES, DAILY_BONUSES, TOURNAMENT_START_DATE, TOURNAMENT_END_DATE } from '@/lib/constants';
-
-function Countdown() {
-  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
-
-  useEffect(() => {
-    const startDate = new Date(TOURNAMENT_START_DATE).getTime();
-    const endDate = new Date(TOURNAMENT_END_DATE).getTime();
-
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      
-      if (now > endDate) {
-        setIsCompleted(true);
-        setHasStarted(true);
-        clearInterval(timer);
-        return;
-      }
-      
-      if (now > startDate) {
-        setHasStarted(true);
-        clearInterval(timer);
-        return;
-      }
-
-      const distance = startDate - now;
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000),
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  if (isCompleted) {
-    return (
-      <div className="bg-[#001A2E] text-[#D4AF37] border border-[#D4AF37]/50 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2">
-        <Trophy className="w-4 h-4" />
-        TOURNAMENT COMPLETED
-      </div>
-    );
-  }
-
-  if (hasStarted) {
-    return (
-      <div className="bg-[#D4AF37] text-[#001A2E] px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 animate-pulse">
-        <div className="w-2 h-2 bg-[#00365F] rounded-full" />
-        TOURNAMENT IN PROGRESS
-      </div>
-    );
-  }
-
-  if (!timeLeft) return null;
-
-  return (
-    <div className="flex items-center gap-4 bg-[#001A2E] p-3 rounded-lg border border-white/20">
-      <Timer className="w-5 h-5 text-[#D4AF37]" />
-      <div className="flex gap-3 text-white font-mono">
-        <div className="text-center">
-          <span className="block text-lg font-bold">{timeLeft.days}</span>
-          <span className="text-[8px] uppercase opacity-60">Days</span>
-        </div>
-        <div className="text-center">
-          <span className="block text-lg font-bold">{timeLeft.hours}</span>
-          <span className="text-[8px] uppercase opacity-60">Hrs</span>
-        </div>
-        <div className="text-center">
-          <span className="block text-lg font-bold">{timeLeft.minutes}</span>
-          <span className="text-[8px] uppercase opacity-60">Min</span>
-        </div>
-        <div className="text-center">
-          <span className="block text-lg font-bold">{timeLeft.seconds}</span>
-          <span className="text-[8px] uppercase opacity-60">Sec</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { PRIZES, DAILY_BONUSES } from '@/lib/constants';
+import { Countdown } from '@/components/Countdown';
+import { LeaderboardTable } from '@/components/LeaderboardTable';
+import { PlayerScoreboard } from '@/components/PlayerScoreboard';
 
 interface Participant {
   id: string;
@@ -109,6 +28,15 @@ interface PlayerScore {
   isCut?: boolean;
 }
 
+/**
+ * Dashboard Component
+ * 
+ * The main public page for the US Open 2026 Golf Tournament Draft.
+ * Renders live leaderboard standings, team detail breakdowns, Top 10 players,
+ * and current payouts based on live scores retrieved from ESPN.
+ * 
+ * @returns {JSX.Element} The rendered tournament dashboard.
+ */
 export default function Dashboard() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [scores, setScores] = useState<Record<string, PlayerScore>>({});
@@ -519,79 +447,14 @@ export default function Dashboard() {
         )}
 
         {/* Main Leaderboard Table */}
-        <section className={`bg-white rounded-2xl shadow-xl border border-[#00365F]/10 overflow-hidden ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
-          <div className="bg-[#00365F] text-white p-6 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <TrendingDown className="w-6 h-6 text-[#D4AF37]" />
-              <h2 className="text-xl font-serif font-bold uppercase tracking-tight">Overall Standings</h2>
-            </div>
-            <Badge className="bg-[#001A2E] text-white border border-white/20">Live Feed</Badge>
-          </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-[#F4F8FA]">
-                <TableRow className="hover:bg-transparent border-b-2 border-[#00365F]/10">
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] w-16 text-center">Pos</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px]">Participant</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px]">Drafted Players</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R1</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R2</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R3</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R4</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-right pr-8">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allStats.map((p, idx) => (
-                  <motion.tr 
-                    key={p.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="border-b border-[#00365F]/5 hover:bg-[#00365F]/5 transition-colors group"
-                  >
-                    <TableCell className="text-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto font-bold ${getRankStyle(p.rank)}`}>
-                        {p.rank}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-bold text-[#00365F] text-lg">
-                      <div className="flex items-center gap-2">
-                        {p.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {p.players.map((player, index) => (
-                          <div key={player} className="text-[11px] flex justify-between gap-4 border-l-2 border-[#D4AF37] pl-2">
-                            <span className="font-medium">
-                              {player}
-                              {isPlayerCut(scores[player]) && (
-                                <span className="ml-1 text-[9px] font-bold text-red-500 uppercase bg-red-50 px-1 rounded border border-red-100">
-                                  Cut
-                                </span>
-                              )}
-                            </span>
-                            <span className="font-mono text-[#00365F] font-bold">
-                              {scores[player] ? (
-                                `${index >= 3 ? '-' : formatScore(scores[player].day1)}/${index >= 3 ? '-' : formatScore(scores[player].day2)}/${isPlayerCut(scores[player]) ? 'C' : formatScore(scores[player].day3)}/${isPlayerCut(scores[player]) ? 'C' : formatScore(scores[player].day4)}`
-                              ) : 'E/E/E/E'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center font-medium">{formatScore(p.stats.d1)}</TableCell>
-                    <TableCell className="text-center font-medium">{formatScore(p.stats.d2)}</TableCell>
-                    <TableCell className="text-center font-medium">{formatScore(p.stats.d3)}</TableCell>
-                    <TableCell className="text-center font-medium">{formatScore(p.stats.d4)}</TableCell>
-                    <TableCell className="text-right font-bold text-2xl text-[#00365F] pr-8">{formatScore(p.stats.total)}</TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+        <LeaderboardTable
+          allStats={allStats}
+          scores={scores}
+          isPlayerCut={isPlayerCut}
+          formatScore={formatScore}
+          playoffComplete={playoffComplete}
+        />
+
 
         {/* Day Money Winners (shown below Final Standings when playoff is complete, hidden here) */}
         {!playoffComplete && (
@@ -632,103 +495,13 @@ export default function Dashboard() {
         )}
 
         {/* Player Scoreboard */}
-        <section className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
-          {/* Top 10 */}
-          <Card className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <CardHeader className="p-4 bg-[#00365F] text-white shrink-0">
-              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-[#D4AF37]" />
-                Top 10 Players
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto max-h-[400px]">
-              <Table>
-                <TableHeader className="bg-[#F4F8FA] sticky top-0 z-10 shadow-sm">
-                  <TableRow className="hover:bg-transparent border-b border-[#00365F]/10">
-                    <TableHead className="w-12 text-center text-[#00365F] font-bold text-xs uppercase">Pos</TableHead>
-                    <TableHead className="text-[#00365F] font-bold text-xs uppercase">Player</TableHead>
-                    <TableHead className="text-[#00365F] font-bold text-xs uppercase">Drafted By</TableHead>
-                    <TableHead className="text-right pr-4 text-[#00365F] font-bold text-xs uppercase">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {top10Players.map(p => (
-                    <TableRow key={p.playerName} className="hover:bg-[#00365F]/5 border-b border-[#00365F]/5">
-                      <TableCell className="text-center font-bold text-[#00365F]">{p.rank}</TableCell>
-                      <TableCell className="font-medium text-[#001A2E]">
-                        {p.playerName}
-                        {p.isCut && <Badge variant="destructive" className="ml-2 text-[8px] uppercase">Cut</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        {draftedBy.has(p.playerName) ? (
-                          <Badge className="bg-[#001A2E] text-[#D4AF37] hover:bg-[#001A2E] text-[10px]">
-                            {draftedBy.get(p.playerName)}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-gray-400 italic">Undrafted</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-[#00365F] pr-4">{formatScore(p.total)}</TableCell>
-                    </TableRow>
-                  ))}
-                  {top10Players.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500 italic">
-                        Waiting for scores...
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Other Drafted */}
-          <Card className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <CardHeader className="p-4 bg-[#001A2E] text-white shrink-0">
-              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-white/50" />
-                Other Drafted Players
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto max-h-[400px]">
-              <Table>
-                <TableHeader className="bg-[#F4F8FA] sticky top-0 z-10 shadow-sm">
-                  <TableRow className="hover:bg-transparent border-b border-[#00365F]/10">
-                    <TableHead className="w-12 text-center text-[#00365F] font-bold text-xs uppercase">Pos</TableHead>
-                    <TableHead className="text-[#00365F] font-bold text-xs uppercase">Player</TableHead>
-                    <TableHead className="text-[#00365F] font-bold text-xs uppercase">Drafted By</TableHead>
-                    <TableHead className="text-right pr-4 text-[#00365F] font-bold text-xs uppercase">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {otherDraftedPlayers.map(p => (
-                    <TableRow key={p.playerName} className="hover:bg-[#00365F]/5 border-b border-[#00365F]/5">
-                      <TableCell className="text-center font-bold text-[#00365F]">{p.rank}</TableCell>
-                      <TableCell className="font-medium text-[#001A2E]">
-                        {p.playerName}
-                        {p.isCut && <Badge variant="destructive" className="ml-2 text-[8px] uppercase">Cut</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-[#001A2E] text-[#D4AF37] hover:bg-[#001A2E] text-[10px]">
-                          {draftedBy.get(p.playerName)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-[#00365F] pr-4">{formatScore(p.total)}</TableCell>
-                    </TableRow>
-                  ))}
-                  {otherDraftedPlayers.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500 italic">
-                        No other drafted players.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </section>
+        <PlayerScoreboard
+          top10Players={top10Players}
+          otherDraftedPlayers={otherDraftedPlayers}
+          draftedBy={draftedBy}
+          formatScore={formatScore}
+          playoffComplete={playoffComplete}
+        />
 
         {/* Prize Money Section */}
         <section className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>

@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, writeBatch, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw, Database, UserPlus, Trash2, Edit, DollarSign, Trophy } from 'lucide-react';
-import { getAuthorizedEmails, ESPN_EVENT_ID } from '@/lib/constants';
+import { ESPN_EVENT_ID } from '@/lib/constants';
+import { useAuth } from '@/hooks/useAuth';
 
 import {
   Dialog,
@@ -58,7 +58,7 @@ const INITIAL_GREEDY_PARTICIPANTS = [
  * - Individual participant management (edit/delete).
  */
 export default function AdminPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading, isAdmin, login, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [fetchingScores, setFetchingScores] = useState(false);
   const [finalizingPlayoff, setFinalizingPlayoff] = useState(false);
@@ -71,15 +71,14 @@ export default function AdminPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-      if (u) {
-        loadData();
+    if (!authLoading) {
+      if (user && isAdmin) {
+        loadData().finally(() => setLoading(false));
+      } else {
+        setLoading(false);
       }
-    });
-    return () => unsubscribe();
-  }, []);
+    }
+  }, [authLoading, user, isAdmin]);
 
   /**
    * Fetches participants, player scores, and tournament configuration from Firestore.
@@ -106,9 +105,9 @@ export default function AdminPage() {
    * Initiates the Google OAuth login flow.
    * Required for administrative access.
    */
-  const login = async () => {
+  const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      await login();
     } catch (e) {
       toast.error('Login failed');
     }
@@ -358,9 +357,7 @@ export default function AdminPage() {
     );
   }
 
-  const authorizedEmails = getAuthorizedEmails();
-
-  if (!user || !authorizedEmails.includes(user.email || '')) {
+  if (!user || !isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F8FA]">
         <Card className="w-full max-w-md border-2 border-[#00365F]">
@@ -369,8 +366,8 @@ export default function AdminPage() {
             <CardDescription className="text-white/80">Only authorized admins can manage this draft.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <Button onClick={login} className="w-full bg-[#00365F] hover:bg-[#001A2E]">Login with Google</Button>
-            {user && !authorizedEmails.includes(user.email || '') && (
+            <Button onClick={handleLogin} className="w-full bg-[#00365F] hover:bg-[#001A2E]">Login with Google</Button>
+            {user && !isAdmin && (
               <p className="text-destructive text-sm mt-4 text-center font-bold">
                 Access Denied: {user.email} is not authorized.
               </p>
@@ -391,7 +388,7 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold tracking-tight text-[#00365F] font-serif uppercase">Tournament Control</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => auth.signOut()} className="border-[#00365F] text-[#00365F] hover:bg-[#00365F] hover:text-white">Logout</Button>
+          <Button variant="outline" onClick={logout} className="border-[#00365F] text-[#00365F] hover:bg-[#00365F] hover:text-white">Logout</Button>
         </div>
       </div>
 

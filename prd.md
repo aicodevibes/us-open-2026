@@ -79,6 +79,6 @@ The system is designed to run automatically during the tournament (via cron scor
 
 ## 6. Technical Stack
 
-* **Frontend**: Next.js 15 (React 19, client-side state, Lucide React icons, Tailwind CSS styling).
+* **Frontend**: Next.js 16 (React 19, client-side state, Lucide React icons, Tailwind CSS styling).
 * **Database**: Cloud Firestore (Real-time subscriptions via `onSnapshot` for immediate leaderboard updates).
 * **Deployment**: Firebase App Hosting.

@@ -41,7 +41,8 @@ This document summarizes the core logic implemented in the public-facing dashboa
 *   **Last Updated**: Displays the `lastUpdated` timestamp from the `config/tournament` document in Firestore, converted to the user's local time.
 
 ## 6. Code Maintenance & Review Items
-*   **Centralized Scoring Logic**: Currently, the participant score calculation (lowest two active players) is duplicated in `app/page.tsx`, `components/FinalStandings.tsx`, and `app/api/finalize-standings/route.ts`. It should be refactored into a shared utility.
-*   **Hardcoded Settings**: Core configurations like the ESPN Event ID, start/end dates, and admin email lists are hardcoded in multiple locations and should be unified in a config file for easier replication.
-*   **Playoff Indexing Resolution**: The scorecard playoff was updated to correctly map 1-indexed golf holes to the 0-indexed playoff scorecards array (`round4Holes[h - 1]`).
+*   **Centralized Settings**: Core configurations like ESPN Event ID, start/end dates, and the admin email whitelist are now centralized in [constants.ts](file:///c:/Dev/us-open-2026/lib/constants.ts).
+*   **Modular Component Design**: Main public dashboard components (`Countdown`, `LeaderboardTable`, `PlayerScoreboard`, and `FinalStandings`) have been extracted into their own files in the `components/` directory, vastly reducing layout duplication and file size.
+*   **Authentication & Authorization Separation**: The Firebase authentication state, Google provider sign-in flow, and admin authorization verification are encapsulated in the custom [useAuth.ts](file:///c:/Dev/us-open-2026/hooks/useAuth.ts) hook.
+*   **Playoff Indexing Resolution**: The scorecard playoff has been updated to correctly map 1-indexed golf holes to the 0-indexed playoff scorecards array (`round4Holes[h - 1]`).
 
