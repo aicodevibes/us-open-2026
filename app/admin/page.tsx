@@ -165,7 +165,7 @@ export default function AdminPage() {
     setFetchingScores(true);
     try {
       // 1. Fetch from ESPN directly (client-side CORS is supported)
-      const espnUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${ESPN_EVENT_ID}`;
+      const espnUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=401811956`;
       const res = await fetch(espnUrl);
       if (!res.ok) throw new Error(`ESPN API returned HTTP ${res.status}`);
       
