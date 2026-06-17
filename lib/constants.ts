@@ -2,7 +2,7 @@
 
 // 1. ESPN Golf Tournament API Event ID
 // Find the 9-digit Event ID in ESPN's URL or API.
-export const ESPN_EVENT_ID = process.env.NEXT_PUBLIC_ESPN_EVENT_ID || "401811947";
+export const ESPN_EVENT_ID = process.env.NEXT_PUBLIC_ESPN_EVENT_ID || "401811956";
 
 // 2. Tournament Details
 export const TOURNAMENT_NAME = "US Open 2026";
