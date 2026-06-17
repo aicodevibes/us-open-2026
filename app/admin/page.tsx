@@ -35,13 +35,13 @@ const INITIAL_PARTICIPANTS = [
 ];
 
 const INITIAL_GREEDY_PARTICIPANTS = [
-  { name: 'Scott', player: 'Sungjae Im' },
-  { name: 'Dereck', player: 'Harris English' },
-  { name: 'Billy Fred', player: 'Kurt Kitayama' },
-  { name: 'Jim', player: 'Max Homa' },
-  { name: 'Cole', player: 'Min Woo Lee' },
-  { name: 'Clay', player: 'Gary Woodland' },
-  { name: 'Robbie', player: 'Akshay Bhatia' }
+  { name: 'Billy Fred', player: 'Niklas Norgaard' },
+  { name: 'Dereck', player: 'Rickie Fowler' },
+  { name: 'Cole', player: 'Ben Griffin' },
+  { name: 'Clay', player: 'Akshay Bhatia' },
+  { name: 'Scott', player: 'Bud Cauley' },
+  { name: 'Robbie', player: 'Alex Noren' },
+  { name: 'Jim', player: 'Kristoffer Reitan' }
 ];
 
 /**
@@ -69,6 +69,9 @@ export default function AdminPage() {
   const [newPlayers, setNewPlayers] = useState<string>('');
   const [cutline, setCutline] = useState<number | ''>('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [addParticipantName, setAddParticipantName] = useState('');
+  const [addParticipantPlayers, setAddParticipantPlayers] = useState('');
 
   useEffect(() => {
     if (!authLoading) {
@@ -141,7 +144,12 @@ export default function AdminPage() {
   const seedGreedyParticipants = async () => {
     setLoading(true);
     try {
+      // 1. Fetch and clear existing greedy participants for clean seed
+      const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
       const batch = writeBatch(db);
+      gSnap.docs.forEach(d => batch.delete(d.ref));
+
+      // 2. Add new ones
       INITIAL_GREEDY_PARTICIPANTS.forEach((p) => {
         const ref = doc(collection(db, 'usopen_greedyParticipants'));
         batch.set(ref, p);
@@ -165,7 +173,7 @@ export default function AdminPage() {
     setFetchingScores(true);
     try {
       // 1. Fetch from ESPN directly (client-side CORS is supported)
-      const espnUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=401811956`;
+      const espnUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${ESPN_EVENT_ID}`;
       const res = await fetch(espnUrl);
       if (!res.ok) throw new Error(`ESPN API returned HTTP ${res.status}`);
       
@@ -175,7 +183,49 @@ export default function AdminPage() {
       
       const statusState = event.status?.type?.state;
       const isPreEvent = statusState === 'pre';
-      const competitors = event.competitions[0].competitors;
+      const competitors = event.competitions[0].competitors || [];
+
+      if (competitors.length === 0 || isPreEvent) {
+        // Tournament has not started yet. Reset all player scores in the database to 0.
+        console.log('Tournament has not started yet. Resetting player scores to 0...');
+        const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
+        const batch = writeBatch(db);
+        
+        // 1. Reset existing player scores in DB
+        sSnap.docs.forEach((doc) => {
+          batch.update(doc.ref, {
+            day1: 0,
+            day2: 0,
+            day3: 0,
+            day4: 0,
+            isCut: false
+          });
+        });
+
+        // 2. Ensure all currently drafted players are initialized to 0
+        const draftedPlayers = new Set<string>();
+        participants.forEach(p => p.players.forEach(playerName => draftedPlayers.add(playerName)));
+        draftedPlayers.forEach((playerName) => {
+          const scoreRef = doc(db, 'usopen_playerScores', playerName);
+          batch.set(scoreRef, {
+            playerName,
+            day1: 0,
+            day2: 0,
+            day3: 0,
+            day4: 0,
+            isCut: false
+          }, { merge: true });
+        });
+        
+        // Also update lastUpdated timestamp
+        const configRef = doc(db, 'usopen_config', 'tournament');
+        batch.set(configRef, { lastUpdated: serverTimestamp() }, { merge: true });
+
+        await batch.commit();
+        toast.success('Tournament has not started yet. Reset all player scores to Even (0)');
+        loadData();
+        return;
+      }
 
       console.log(`Syncing scores for ${competitors.length} competitors...`);
 
@@ -260,16 +310,19 @@ export default function AdminPage() {
       const pSnap = await getDocs(collection(db, 'usopen_participants'));
       const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
       const cSnap = await getDocs(collection(db, 'usopen_config'));
+      const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
       
       const batch = writeBatch(db);
       pSnap.docs.forEach(d => batch.delete(d.ref));
       sSnap.docs.forEach(d => batch.delete(d.ref));
       cSnap.docs.forEach(d => batch.delete(d.ref));
+      gSnap.docs.forEach(d => batch.delete(d.ref));
       
       await batch.commit();
       toast.success('All data cleared successfully');
       setParticipants([]);
       setScores([]);
+      setGreedyParticipants([]);
       setShowClearConfirm(false);
       loadData();
     } catch (e) {
@@ -331,6 +384,41 @@ export default function AdminPage() {
       loadData();
     } catch (e) {
       toast.error('Failed to update players');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddParticipant = async () => {
+    if (!addParticipantName.trim()) {
+      toast.error('Participant name is required');
+      return;
+    }
+    const playersArray = addParticipantPlayers
+      .split(',')
+      .map(p => p.trim())
+      .filter(p => p !== '');
+
+    if (playersArray.length === 0) {
+      toast.error('Please enter at least one golfer');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const ref = doc(collection(db, 'usopen_participants'));
+      await setDoc(ref, {
+        name: addParticipantName.trim(),
+        players: playersArray
+      });
+      toast.success('Participant added successfully');
+      setShowAddParticipant(false);
+      setAddParticipantName('');
+      setAddParticipantPlayers('');
+      loadData();
+    } catch (e) {
+      console.error('Add participant error:', e);
+      toast.error('Failed to add participant');
     } finally {
       setLoading(false);
     }
@@ -488,8 +576,15 @@ export default function AdminPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         <Card className="border-2 border-[#00365F]/10">
-          <CardHeader className="bg-[#00365F] text-white">
+          <CardHeader className="bg-[#00365F] text-white flex flex-row items-center justify-between space-y-0 py-3">
             <CardTitle className="text-lg">Main Participants ({participants.length})</CardTitle>
+            <Button 
+              onClick={() => setShowAddParticipant(true)} 
+              className="bg-[#D4AF37] hover:bg-[#B8942A] text-[#001A2E] h-8 py-0 px-3 flex items-center gap-1 font-bold text-xs"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Add Participant
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -586,6 +681,38 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingParticipant(null)}>Cancel</Button>
             <Button onClick={updatePlayers} className="bg-[#00365F]">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Participant Dialog */}
+      <Dialog open={showAddParticipant} onOpenChange={(open) => !open && setShowAddParticipant(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Participant</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Participant Name</label>
+              <Input 
+                value={addParticipantName} 
+                onChange={(e) => setAddParticipantName(e.target.value)}
+                placeholder="e.g. John Doe"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Golfers (comma-separated, typically 3)</label>
+              <Input 
+                value={addParticipantPlayers} 
+                onChange={(e) => setAddParticipantPlayers(e.target.value)}
+                placeholder="Scottie Scheffler, Rory McIlroy, Xander Schauffele"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Enter drafted golfers, separated by commas.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddParticipant(false)}>Cancel</Button>
+            <Button onClick={handleAddParticipant} className="bg-[#00365F]">Add Participant</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

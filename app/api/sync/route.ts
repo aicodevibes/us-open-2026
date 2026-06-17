@@ -25,9 +25,13 @@ async function fetchUSOpenScoresFromESPN() {
 
   const statusState = event.status?.type?.state; // 'pre', 'in', or 'post'
   const isPreEvent = statusState === 'pre';
-  const competitors = event.competitions[0].competitors;
+  const competitors = event.competitions[0].competitors || [];
 
   console.log(`ESPN event status: ${event.status?.type?.description} (${statusState}), ${competitors.length} competitors`);
+
+  if (competitors.length === 0) {
+    return [];
+  }
 
   return competitors.map((c: any) => {
     const rounds = [0, 0, 0, 0];
@@ -83,7 +87,57 @@ export async function GET(request: Request) {
     const results = await fetchUSOpenScoresFromESPN();
 
     if (!results || results.length === 0) {
-      return NextResponse.json({ message: 'No scores found to update' });
+      console.log('Tournament has not started. Resetting player scores to 0...');
+      
+      const batch = adminDb.batch();
+
+      // 1. Reset existing scores
+      const sSnap = await adminDb.collection('usopen_playerScores').get();
+      sSnap.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          day1: 0,
+          day2: 0,
+          day3: 0,
+          day4: 0,
+          isCut: false
+        });
+      });
+
+      // 2. Fetch all participants to ensure drafted players are initialized
+      const pSnap = await adminDb.collection('usopen_participants').get();
+      const draftedPlayers = new Set<string>();
+      pSnap.docs.forEach(doc => {
+        const data = doc.data();
+        if (Array.isArray(data.players)) {
+          data.players.forEach((pName: string) => draftedPlayers.add(pName));
+        }
+      });
+
+      draftedPlayers.forEach((playerName) => {
+        const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
+        batch.set(playerRef, {
+          playerName,
+          day1: 0,
+          day2: 0,
+          day3: 0,
+          day4: 0,
+          isCut: false
+        }, { merge: true });
+      });
+
+      // Update last updated timestamp
+      const configRef = adminDb.collection('usopen_config').doc('tournament');
+      batch.set(configRef, {
+        lastUpdated: FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      await batch.commit();
+
+      return NextResponse.json({
+        success: true,
+        message: 'Tournament has not started yet. Reset all player scores to 0.',
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Use Admin SDK to write scores (bypasses Firestore security rules)
