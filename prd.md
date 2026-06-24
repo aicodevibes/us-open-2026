@@ -69,16 +69,33 @@ The system is designed to run automatically during the tournament (via cron scor
 
 ## 5. System Features & Control Panel
 
-* **Google Authentication**: Admin access is restricted to verified email addresses.
-* **Data Seeding**: One-click seeding for participants, draft picks, and Greedy rosters.
-* **Live Sync**: Automated score sync via a secure `/api/sync?secret=...` cron endpoint.
-* **Manual Override**: Allows setting a manual cutline value to override automatic ESPN cut statuses.
-* **Finalize Playoff**: End-of-tournament execution triggers the playoff scraper and locks the standings.
+* **Google Authentication**: Admin access is gated using a custom `useAuth` hook and authorized email lists.
+* **Server-Side Operations**: Database modifications (seeding, clearing, updating rosters) are handled securely on the server via Next.js Server Actions.
+* **Data Seeding**: Roster seeds and Greedy game configurations are initialized securely.
+* **Live Sync**: Automated score synchronization via a secure `/api/sync?secret=...` cron endpoint.
+* **Manual Override**: Allows setting a manual cutline value in Firestore configuration to override automatic ESPN cut statuses.
+* **Finalize Playoff**: Scorecard playoff calculations trigger detailed linescore scrapers from ESPN to resolve Top 4 standings.
 
 ---
 
 ## 6. Technical Stack
 
-* **Frontend**: Next.js 16 (React 19, client-side state, Lucide React icons, Tailwind CSS styling).
-* **Database**: Cloud Firestore (Real-time subscriptions via `onSnapshot` for immediate leaderboard updates).
+* **Frontend Framework**: Next.js 16 & React 19.
+* **State & Data Flow**: Custom React Hooks (`useAuth`) and modular presentational components (`Countdown`, `LeaderboardTable`, `PlayerScoreboard`, `FinalStandings`).
+* **Database**: Cloud Firestore (Real-time subscriptions via `onSnapshot` client side; Admin SDK writes on the server).
 * **Deployment**: Firebase App Hosting.
+
+---
+
+## 7. Security & Architecture Recommendations (Future Scope)
+
+For future tournament iterations, the following improvements should be considered to enhance safety, performance, and maintainability:
+
+### A. Access Control & API deprecation
+* **Deprecate Unused API Endpoints**: Remove the `app/api/finalize-standings/route.ts` file since finalization is now fully performed via the authenticated `finalizePlayoffAction` Server Action. Leaving the unauthenticated API endpoint exposes the database to unauthorized mutations.
+* **Centralize Environment Secrets**: Migrate `CRON_SECRET` from plaintext configuration files (`apphosting.yaml`) to Google Cloud Secret Manager. Reference the secret using `secret: CRON_SECRET_REF` to prevent credential exposure in the source repository.
+* **Dynamic Role-Based Access Control**: Remove hardcoded personal email addresses from `firestore.rules`. Rely exclusively on a query checks against a secure `/usopen_users/{userId}` user roles collection.
+
+### B. Business Logic DRYness
+* **Centralize Scoring Logic**: Extract player cut calculations, daily scores, and payouts into a centralized `lib/scoring.ts` utility. Import these functions in `app/page.tsx`, `components/FinalStandings.tsx`, and the server APIs to eliminate duplicate logic.
+* **Render Memoization**: Wrap standings calculations, standings sorting, and day money winner lookups in `useMemo` blocks inside client views to prevent recalculating them on every second (during countdown ticks).
