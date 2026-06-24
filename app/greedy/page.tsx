@@ -1,94 +1,49 @@
-'use client';
+// app/greedy/page.tsx
 
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, DollarSign, Loader2, Info, Timer } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Trophy, DollarSign, Info, Timer } from 'lucide-react';
 import { GREEDY_PRIZE_POOL, TOURNAMENT_NAME } from '@/lib/constants';
+import { RefreshTimer } from '@/components/RefreshTimer';
+import { isPlayerCut } from '@/lib/scoring';
+import { GreedyParticipant, PlayerScore } from '@/types';
 
-/**
- * GreedyPage Component
- * 
- * A specialized "hidden" dashboard for a side-game during the US Open.
- * Features a separate roster of participants and a single-player-per-participant format.
- * Winner takes all ($175).
- */
+export const dynamic = 'force-dynamic';
 
-interface Participant {
-  id: string;
-  name: string;
-  player: string;
-}
+const formatScore = (score: number | null | undefined) => {
+  if (score === 0) return 'E';
+  if (score === null || score === undefined) return '-';
+  return score > 0 ? `+${score}` : score.toString();
+};
 
-interface PlayerScore {
-  id: string;
-  playerName: string;
-  day1: number;
-  day2: number;
-  day3: number;
-  day4: number;
-  isCut?: boolean;
-}
+export default async function GreedyPage() {
+  // 1. Fetch data on the secure server
+  const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
+    adminDb.collection('usopen_greedyParticipants').get(),
+    adminDb.collection('usopen_playerScores').get(),
+    adminDb.collection('usopen_config').doc('tournament').get(),
+  ]);
 
-export default function GreedyPage() {
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [scores, setScores] = useState<Record<string, PlayerScore>>({});
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [connectionError, setConnectionError] = useState(false);
+  const participants = participantsSnap.docs.map(d => ({ id: d.id, ...d.data() } as GreedyParticipant));
 
-  useEffect(() => {
-    // Listen to greedy participants
-    const unsubP = onSnapshot(collection(db, 'usopen_greedyParticipants'), (snap) => {
-      setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)));
-      setLoading(false);
-    }, (error) => {
-      console.error('Firestore connection error (greedyParticipants):', error);
-      setConnectionError(true);
-      setLoading(false);
-    });
+  const scores: Record<string, PlayerScore> = {};
+  scoresSnap.docs.forEach(d => {
+    const data = d.data() as PlayerScore;
+    scores[data.playerName] = data;
+  });
 
-    // Reuse the same playerScores collection
-    const unsubS = onSnapshot(collection(db, 'usopen_playerScores'), (snap) => {
-      const sMap: Record<string, PlayerScore> = {};
-      snap.docs.forEach(d => {
-        const data = d.data() as PlayerScore;
-        sMap[data.playerName] = data;
-      });
-      setScores(sMap);
-    }, (error) => {
-      console.error('Firestore connection error (scores):', error);
-      setConnectionError(true);
-    });
+  const lastUpdated = configSnap.exists && configSnap.data()?.lastUpdated
+    ? configSnap.data()?.lastUpdated.toDate()
+    : null;
 
-    // Tournament config for timestamp
-    const unsubC = onSnapshot(doc(db, 'usopen_config', 'tournament'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.lastUpdated) {
-          setLastUpdated(data.lastUpdated.toDate());
-        }
-      }
-    });
+  const cutline = configSnap.exists && configSnap.data()?.cutline !== undefined
+    ? configSnap.data()?.cutline
+    : null;
 
-    return () => {
-      unsubP();
-      unsubS();
-      unsubC();
-    };
-  }, []);
-
-  const formatScore = (score: number | null | undefined) => {
-    if (score === 0) return 'E';
-    if (score === null || score === undefined) return '-';
-    return score > 0 ? `+${score}` : score.toString();
-  };
-
-  const getParticipantStats = (participant: Participant) => {
+  // 2. Calculations
+  const getParticipantStats = (participant: GreedyParticipant) => {
     const s = scores[participant.player];
     if (!s) return { d1: 0, d2: 0, d3: 0, d4: 0, total: 0, isCut: false };
 
@@ -97,7 +52,7 @@ export default function GreedyPage() {
     const d3 = s.day3 || 0;
     const d4 = s.day4 || 0;
     const total = d1 + d2 + d3 + d4;
-    return { d1, d2, d3, d4, total, isCut: !!s.isCut };
+    return { d1, d2, d3, d4, total, isCut: isPlayerCut(s, cutline) };
   };
 
   const allStats = participants.map(p => ({
@@ -115,25 +70,11 @@ export default function GreedyPage() {
     return allStats[0].stats.total < allStats[1].stats.total && !allStats[0].stats.isCut;
   };
 
-  if (connectionError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#001A2E] text-white p-4">
-        <h2 className="text-xl font-bold text-[#D4AF37]">Connection Error</h2>
-        <p className="text-sm opacity-60 text-center">Unable to load the side game data. Please try again later.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#001A2E]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
-      </div>
-    );
-  }
-
   return (
     <main className="min-h-screen bg-[#F4F8FA] text-[#001A2E] p-4 md:p-8 font-sans">
+      {/* Poll and refresh server component data every 60 seconds */}
+      <RefreshTimer intervalMs={60000} />
+
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <header className="bg-[#00365F] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#D4AF37]">
@@ -178,11 +119,8 @@ export default function GreedyPage() {
               </TableHeader>
               <TableBody>
                 {allStats.map((p, idx) => (
-                  <motion.tr 
+                  <TableRow 
                     key={p.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
                     className={`border-b border-[#00365F]/5 hover:bg-[#00365F]/5 transition-colors ${isOutrightLeader(idx) ? 'bg-[#D4AF37]/5' : ''}`}
                   >
                     <TableCell className="font-bold text-[#00365F]">
@@ -202,7 +140,7 @@ export default function GreedyPage() {
                     <TableCell className="text-right font-bold text-xl text-[#00365F] pr-6">
                       {formatScore(p.stats.total)}
                     </TableCell>
-                  </motion.tr>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>

@@ -4,36 +4,10 @@
  * participant scores, and player-level round breakdowns.
  */
 
-import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingDown } from 'lucide-react';
-
-interface PlayerScore {
-  id: string;
-  playerName: string;
-  day1: number;
-  day2: number;
-  day3: number;
-  day4: number;
-  isCut?: boolean;
-}
-
-interface ParticipantStats {
-  id: string;
-  name: string;
-  players: string[];
-  stats: {
-    d1: number;
-    d2: number;
-    d3: number;
-    d4: number;
-    total: number;
-    isCut: boolean;
-  };
-  rank: number | string;
-  payout: number;
-}
+import { ParticipantStats, PlayerScore } from '@/types';
 
 interface LeaderboardTableProps {
   allStats: ParticipantStats[];
@@ -103,12 +77,9 @@ export function LeaderboardTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allStats.map((p, idx) => (
-              <motion.tr 
+            {allStats.map((p) => (
+              <TableRow 
                 key={p.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
                 className="border-b border-[#00365F]/5 hover:bg-[#00365F]/5 transition-colors group"
               >
                 <TableCell className="text-center">
@@ -147,7 +118,7 @@ export function LeaderboardTable({
                 <TableCell className="text-center font-medium">{formatScore(p.stats.d3)}</TableCell>
                 <TableCell className="text-center font-medium">{formatScore(p.stats.d4)}</TableCell>
                 <TableCell className="text-right font-bold text-2xl text-[#00365F] pr-8">{formatScore(p.stats.total)}</TableCell>
-              </motion.tr>
+              </TableRow>
             ))}
           </TableBody>
         </Table>

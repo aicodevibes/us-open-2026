@@ -1,3 +1,6 @@
+// components/Countdown.tsx
+'use client';
+
 /**
  * @file components/Countdown.tsx
  * @description A countdown timer component that displays the time left until the tournament starts,

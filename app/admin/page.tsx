@@ -1,15 +1,15 @@
+// app/admin/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, writeBatch, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw, Database, UserPlus, Trash2, Edit, DollarSign, Trophy } from 'lucide-react';
-import { ESPN_EVENT_ID } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 
 import {
@@ -19,30 +19,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-const INITIAL_PARTICIPANTS = [
-  { name: 'Bruce', players: ['Scottie Scheffler', 'Chris Gotterup', 'J.J. Spaun'] },
-  { name: 'Greg', players: ['Rory McIlroy', 'Viktor Hovland', 'Nicolai Højgaard'] },
-  { name: 'Pat', players: ['Cameron Young', 'Patrick Reed', 'Jacob Bridgeman'] },
-  { name: 'Robbie', players: ['Matt Fitzpatrick', 'Tyrrell Hatton', 'Shane Lowry'] },
-  { name: 'Clay', players: ['Tommy Fleetwood', 'Jordan Spieth', 'Jason Day'] },
-  { name: 'Cole', players: ['Xander Schauffele', 'Brooks Koepka', 'Adam Scott'] },
-  { name: 'Jim', players: ['Ludvig Åberg', 'Si Woo Kim', 'Sam Burns'] },
-  { name: 'Garis', players: ['Justin Rose', 'Rickie Fowler', 'Alex Fitzpatrick'] },
-  { name: 'Billy Fred', players: ['Jon Rahm', 'Matt McCarty', 'Keegan Bradley'] },
-  { name: 'Dereck', players: ['Justin Thomas', 'Russell Henley', 'Harry Hall'] },
-  { name: 'Scott', players: ['Bryson DeChambeau', 'Patrick Cantlay', 'Ben Griffin'] },
-  { name: 'Roby', players: ['Collin Morikawa', 'Robert MacIntyre', 'Corey Conners'] }
-];
 
-const INITIAL_GREEDY_PARTICIPANTS = [
-  { name: 'Billy Fred', player: 'Niklas Norgaard' },
-  { name: 'Dereck', player: 'Rickie Fowler' },
-  { name: 'Cole', player: 'Ben Griffin' },
-  { name: 'Clay', player: 'Akshay Bhatia' },
-  { name: 'Scott', player: 'Bud Cauley' },
-  { name: 'Robbie', player: 'Alex Noren' },
-  { name: 'Jim', player: 'Kristoffer Reitan' }
-];
+import {
+  seedParticipantsAction,
+  seedGreedyParticipantsAction,
+  clearAllDataAction,
+  syncScoresAction,
+  finalizePlayoffAction,
+  addParticipantAction,
+  deleteParticipantAction,
+  updateParticipantPlayersAction,
+  updateCutlineAction,
+  syncParticipantNamesAction
+} from '@/app/actions/admin';
 
 /**
  * AdminPage Component
@@ -50,12 +39,7 @@ const INITIAL_GREEDY_PARTICIPANTS = [
  * Provides an administrative interface for managing the US Open dashboard.
  * Requires Google Authentication with an authorized email address.
  * 
- * Features:
- * - Real-time monitoring of participants and scores.
- * - Manual score sync trigger.
- * - Database seeding with tournament rosters.
- * - Database clearing (destructive).
- * - Individual participant management (edit/delete).
+ * All mutations are handled securely on the server via Next.js Server Actions.
  */
 export default function AdminPage() {
   const { user, loading: authLoading, isAdmin, login, logout } = useAuth();
@@ -85,29 +69,29 @@ export default function AdminPage() {
 
   /**
    * Fetches participants, player scores, and tournament configuration from Firestore.
-   * Populates the local state for the admin dashboard tables.
    */
   const loadData = async () => {
-    const pSnap = await getDocs(collection(db, 'usopen_participants'));
-    setParticipants(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; players: string[] })));
+    try {
+      const pSnap = await getDocs(collection(db, 'usopen_participants'));
+      setParticipants(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; players: string[] })));
 
-    const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
-    setGreedyParticipants(gSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; player: string })));
+      const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
+      setGreedyParticipants(gSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; player: string })));
 
-    const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
-    setScores(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; playerName: string; day1: number; day2: number; day3: number; day4: number; isCut?: boolean })));
+      const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
+      setScores(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; playerName: string; day1: number; day2: number; day3: number; day4: number; isCut?: boolean })));
 
-    const cSnap = await getDocs(collection(db, 'usopen_config'));
-    const configDoc = cSnap.docs.find(d => d.id === 'tournament');
-    if (configDoc && configDoc.data().cutline !== undefined) {
-      setCutline(configDoc.data().cutline === null ? '' : configDoc.data().cutline);
+      const cSnap = await getDocs(collection(db, 'usopen_config'));
+      const configDoc = cSnap.docs.find(d => d.id === 'tournament');
+      if (configDoc && configDoc.data().cutline !== undefined) {
+        setCutline(configDoc.data().cutline === null ? '' : configDoc.data().cutline);
+      }
+    } catch (e) {
+      console.error('Error loading admin data:', e);
+      toast.error('Failed to load live database records');
     }
   };
 
-  /**
-   * Initiates the Google OAuth login flow.
-   * Required for administrative access.
-   */
   const handleLogin = async () => {
     try {
       await login();
@@ -116,218 +100,93 @@ export default function AdminPage() {
     }
   };
 
-  /**
-   * Seeds the 'participants' collection with the hardcoded INITIAL_PARTICIPANTS array.
-   * This is used for initial setup or after a database clear.
-   */
   const seedParticipants = async () => {
     setLoading(true);
     try {
-      const batch = writeBatch(db);
-      INITIAL_PARTICIPANTS.forEach((p) => {
-        const ref = doc(collection(db, 'usopen_participants'));
-        batch.set(ref, p);
-      });
-      await batch.commit();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await seedParticipantsAction(token);
       toast.success('Participants seeded successfully');
-      loadData();
-    } catch (e) {
-      toast.error('Failed to seed participants');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to seed participants');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Seeds the 'greedyParticipants' collection with the side-game roster.
-   */
   const seedGreedyParticipants = async () => {
     setLoading(true);
     try {
-      // 1. Fetch and clear existing greedy participants for clean seed
-      const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
-      const batch = writeBatch(db);
-      gSnap.docs.forEach(d => batch.delete(d.ref));
-
-      // 2. Add new ones
-      INITIAL_GREEDY_PARTICIPANTS.forEach((p) => {
-        const ref = doc(collection(db, 'usopen_greedyParticipants'));
-        batch.set(ref, p);
-      });
-      await batch.commit();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await seedGreedyParticipantsAction(token);
       toast.success('Greedy participants seeded successfully');
-      loadData();
-    } catch (e) {
-      toast.error('Failed to seed greedy participants');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to seed greedy participants');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Manually fetches live scores from the ESPN API and updates the 'playerScores' collection.
-   * Also updates the 'lastUpdated' timestamp in the tournament configuration.
-   */
   const handleFetchScores = async () => {
     if (!user) return;
     setFetchingScores(true);
     try {
-      // 1. Fetch from ESPN directly (client-side CORS is supported)
-      const espnUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${ESPN_EVENT_ID}`;
-      const res = await fetch(espnUrl);
-      if (!res.ok) throw new Error(`ESPN API returned HTTP ${res.status}`);
-      
-      const espnData = await res.json();
-      const event = espnData.events?.[0];
-      if (!event) throw new Error('No event found in ESPN response');
-      
-      const statusState = event.status?.type?.state;
-      const isPreEvent = statusState === 'pre';
-      const competitors = event.competitions[0].competitors || [];
-
-      if (competitors.length === 0 || isPreEvent) {
-        // Tournament has not started yet. Reset all player scores in the database to 0.
-        console.log('Tournament has not started yet. Resetting player scores to 0...');
-        const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
-        const batch = writeBatch(db);
-        
-        // 1. Reset existing player scores in DB
-        sSnap.docs.forEach((doc) => {
-          batch.update(doc.ref, {
-            day1: 0,
-            day2: 0,
-            day3: 0,
-            day4: 0,
-            isCut: false
-          });
-        });
-
-        // 2. Ensure all currently drafted players are initialized to 0
-        const draftedPlayers = new Set<string>();
-        participants.forEach(p => p.players.forEach(playerName => draftedPlayers.add(playerName)));
-        draftedPlayers.forEach((playerName) => {
-          const scoreRef = doc(db, 'usopen_playerScores', playerName);
-          batch.set(scoreRef, {
-            playerName,
-            day1: 0,
-            day2: 0,
-            day3: 0,
-            day4: 0,
-            isCut: false
-          }, { merge: true });
-        });
-        
-        // Also update lastUpdated timestamp
-        const configRef = doc(db, 'usopen_config', 'tournament');
-        batch.set(configRef, { lastUpdated: serverTimestamp() }, { merge: true });
-
-        await batch.commit();
-        toast.success('Tournament has not started yet. Reset all player scores to Even (0)');
-        loadData();
-        return;
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      const result = await syncScoresAction(token);
+      if (result.message) {
+        toast.success(result.message);
+      } else {
+        toast.success(`Synced ${result.updatedCount} player scores from ESPN`);
       }
-
-      console.log(`Syncing scores for ${competitors.length} competitors...`);
-
-      const batch = writeBatch(db);
-      let updatedCount = 0;
-
-      competitors.forEach((c: any) => {
-        const rounds = [0, 0, 0, 0];
-        const isCut = c.score === 'CUT' || 
-                    c.status?.type?.name === 'STATUS_CUT' || 
-                    c.status?.type?.description?.toLowerCase().includes('cut');
-
-        if (!isPreEvent && c.linescores) {
-          c.linescores.forEach((ls: any) => {
-            if (ls.period >= 1 && ls.period <= 4) {
-              const scoreVal = parseInt(ls.displayValue || ls.value || '0');
-              rounds[ls.period - 1] = isNaN(scoreVal) ? 0 : scoreVal;
-            }
-          });
-        }
-
-        const playerName = c.athlete.displayName || c.athlete.fullName;
-        const scoreRef = doc(db, 'usopen_playerScores', playerName);
-        batch.set(scoreRef, {
-          playerName,
-          day1: rounds[0],
-          day2: rounds[1],
-          day3: rounds[2],
-          day4: rounds[3],
-          isCut: !!isCut
-        }, { merge: true });
-        updatedCount++;
-      });
-
-      // Update timestamp
-      const configRef = doc(db, 'usopen_config', 'tournament');
-      batch.set(configRef, { lastUpdated: serverTimestamp() }, { merge: true });
-
-      await batch.commit();
-      
-      toast.success(`Synced ${updatedCount} player scores from ESPN`);
-      loadData();
-    } catch (e) {
+      await loadData();
+    } catch (e: any) {
       console.error('Fetch scores error:', e);
-      toast.error(e instanceof Error ? e.message : 'Error syncing scores');
+      toast.error(e.message || 'Error syncing scores');
     } finally {
       setFetchingScores(false);
     }
   };
 
-  /**
-   * Triggers the scorecard playoff tie-breaker logic and finalizes the tournament standings.
-   */
   const handleFinalizePlayoff = async () => {
     if (!confirm('Are you sure you want to finalize the standings? This will run the scorecard playoff tie-breakers.')) return;
     setFinalizingPlayoff(true);
     try {
-      const res = await fetch('/api/finalize-standings', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to finalize standings');
-      const data = await res.json();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      const data = await finalizePlayoffAction(token);
       if (data.fetchedPlayers && data.fetchedPlayers.length > 0) {
         toast.success(`Standings finalized! Tie-breaker fetched for: ${data.fetchedPlayers.join(', ')}`);
       } else {
         toast.success('Standings finalized! No ties detected in Top 4.');
       }
-      loadData();
-    } catch (e) {
-      toast.error('Error finalizing standings');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Error finalizing standings');
       console.error(e);
     } finally {
       setFinalizingPlayoff(false);
     }
   };
 
-  /**
-   * Completely clears the participants and playerScores collections.
-   * This is a destructive operation used for database resets.
-   */
   const clearData = async () => {
     setLoading(true);
     try {
-      const pSnap = await getDocs(collection(db, 'usopen_participants'));
-      const sSnap = await getDocs(collection(db, 'usopen_playerScores'));
-      const cSnap = await getDocs(collection(db, 'usopen_config'));
-      const gSnap = await getDocs(collection(db, 'usopen_greedyParticipants'));
-      
-      const batch = writeBatch(db);
-      pSnap.docs.forEach(d => batch.delete(d.ref));
-      sSnap.docs.forEach(d => batch.delete(d.ref));
-      cSnap.docs.forEach(d => batch.delete(d.ref));
-      gSnap.docs.forEach(d => batch.delete(d.ref));
-      
-      await batch.commit();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await clearAllDataAction(token);
       toast.success('All data cleared successfully');
       setParticipants([]);
       setScores([]);
       setGreedyParticipants([]);
       setShowClearConfirm(false);
-      loadData();
-    } catch (e) {
+      await loadData();
+    } catch (e: any) {
       console.error('Clear data error:', e);
-      toast.error('Failed to clear data');
+      toast.error(e.message || 'Failed to clear data');
     } finally {
       setLoading(false);
     }
@@ -336,22 +195,13 @@ export default function AdminPage() {
   const syncParticipantNames = async () => {
     setLoading(true);
     try {
-      const batch = writeBatch(db);
-      // We'll update the existing participants in the DB to match the INITIAL_PARTICIPANTS names
-      // This fixes issues like 'Rory Mcllroy' -> 'Rory McIlroy'
-      const pSnap = await getDocs(collection(db, 'usopen_participants'));
-      pSnap.docs.forEach((docSnap) => {
-        const currentData = docSnap.data();
-        const matchingInitial = INITIAL_PARTICIPANTS.find(p => p.name === currentData.name);
-        if (matchingInitial) {
-          batch.update(docSnap.ref, { players: matchingInitial.players });
-        }
-      });
-      await batch.commit();
-      toast.success('Participant names synced with latest API format');
-      loadData();
-    } catch (e) {
-      toast.error('Failed to sync names');
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      const result = await syncParticipantNamesAction(token);
+      toast.success(`Participant names synced for ${result.count} entries`);
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to sync names');
     } finally {
       setLoading(false);
     }
@@ -361,11 +211,13 @@ export default function AdminPage() {
     if (!confirm('Are you sure you want to delete this participant?')) return;
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'usopen_participants', id));
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await deleteParticipantAction(token, id);
       toast.success('Participant deleted');
-      loadData();
-    } catch (e) {
-      toast.error('Failed to delete participant');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to delete participant');
     } finally {
       setLoading(false);
     }
@@ -376,14 +228,14 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const playersArray = newPlayers.split(',').map(p => p.trim()).filter(p => p !== '');
-      await updateDoc(doc(db, 'usopen_participants', editingParticipant.id), {
-        players: playersArray
-      });
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await updateParticipantPlayersAction(token, editingParticipant.id, playersArray);
       toast.success('Players updated');
       setEditingParticipant(null);
-      loadData();
-    } catch (e) {
-      toast.error('Failed to update players');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update players');
     } finally {
       setLoading(false);
     }
@@ -406,19 +258,17 @@ export default function AdminPage() {
 
     setLoading(true);
     try {
-      const ref = doc(collection(db, 'usopen_participants'));
-      await setDoc(ref, {
-        name: addParticipantName.trim(),
-        players: playersArray
-      });
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await addParticipantAction(token, addParticipantName.trim(), playersArray);
       toast.success('Participant added successfully');
       setShowAddParticipant(false);
       setAddParticipantName('');
       setAddParticipantPlayers('');
-      loadData();
-    } catch (e) {
+      await loadData();
+    } catch (e: any) {
       console.error('Add participant error:', e);
-      toast.error('Failed to add participant');
+      toast.error(e.message || 'Failed to add participant');
     } finally {
       setLoading(false);
     }
@@ -428,10 +278,12 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const val = cutline === '' ? null : Number(cutline);
-      await setDoc(doc(db, 'usopen_config', 'tournament'), { cutline: val }, { merge: true });
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+      await updateCutlineAction(token, val);
       toast.success('Cutline updated');
-    } catch (e) {
-      toast.error('Failed to update cutline');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update cutline');
     } finally {
       setLoading(false);
     }
@@ -514,7 +366,7 @@ export default function AdminPage() {
           <CardHeader className="bg-[#D4AF37]/10">
             <CardTitle className="flex items-center gap-2 text-[#001A2E]">
               <RefreshCw className={`w-5 h-5 ${fetchingScores ? 'animate-spin' : ''}`} />
-              Gemini AI Score Sync
+              ESPN Live Score Sync
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
@@ -522,7 +374,7 @@ export default function AdminPage() {
               {fetchingScores ? 'Fetching from ESPN...' : 'Fetch Latest Scores'}
             </Button>
             <p className="text-sm text-muted-foreground italic text-center">
-              Fetches live scores directly from ESPN and updates the leaderboard via the sync API.
+              Triggers a secure server-side synchronization of scores from the ESPN leaderboard API.
             </p>
           </CardContent>
         </Card>
@@ -541,13 +393,13 @@ export default function AdminPage() {
                   type="number" 
                   value={cutline} 
                   onChange={(e) => setCutline(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="Leave empty to use AI data"
+                  placeholder="Leave empty to use automatic data"
                 />
               </div>
               <Button onClick={updateCutline} className="bg-[#00365F] hover:bg-[#001A2E]">Save</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              If set, any player whose Day 1 + Day 2 score is strictly greater than this value will be marked as cut, overriding the AI status.
+              If set, any player whose Day 1 + Day 2 score is strictly greater than this value will be marked as cut, overriding the ESPN status.
             </p>
           </CardContent>
         </Card>

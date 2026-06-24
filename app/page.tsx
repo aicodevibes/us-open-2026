@@ -1,306 +1,69 @@
-'use client';
+// app/page.tsx
 
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, DollarSign, Loader2, Info, RefreshCw, Wallet } from 'lucide-react';
+import { Trophy, DollarSign, Info, RefreshCw, Wallet } from 'lucide-react';
 import { FinalStandings } from '@/components/FinalStandings';
 import { PRIZES, DAILY_BONUSES } from '@/lib/constants';
 import { Countdown } from '@/components/Countdown';
 import { LeaderboardTable } from '@/components/LeaderboardTable';
 import { PlayerScoreboard } from '@/components/PlayerScoreboard';
+import { RefreshTimer } from '@/components/RefreshTimer';
+import { 
+  isPlayerCut, 
+  computeParticipantStandings, 
+  getDayMoneyWinners 
+} from '@/lib/scoring';
+import { Participant, PlayerScore, PlayoffScore } from '@/types';
 
-interface Participant {
-  id: string;
-  name: string;
-  players: string[];
-}
+// Force dynamic rendering so server fetches live data on each request
+export const dynamic = 'force-dynamic';
 
-interface PlayerScore {
-  id: string;
-  playerName: string;
-  day1: number;
-  day2: number;
-  day3: number;
-  day4: number;
-  isCut?: boolean;
-}
+const formatScore = (score: number | null | undefined) => {
+  if (score === 0) return 'E';
+  if (score === null || score === undefined) return '-';
+  return score > 0 ? `+${score}` : score.toString();
+};
 
 /**
- * Dashboard Component
- * 
- * The main public page for the US Open 2026 Golf Tournament Draft.
- * Renders live leaderboard standings, team detail breakdowns, Top 10 players,
- * and current payouts based on live scores retrieved from ESPN.
- * 
- * @returns {JSX.Element} The rendered tournament dashboard.
+ * Public Dashboard Component
+ * Renders live US Open 2026 Golf Draft standings on the server.
  */
-export default function Dashboard() {
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [scores, setScores] = useState<Record<string, PlayerScore>>({});
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [cutline, setCutline] = useState<number | null>(null);
-  const [playoffComplete, setPlayoffComplete] = useState<boolean>(false);
-  const [playoffScores, setPlayoffScores] = useState<Record<string, any>>({});
-  const [loading, setLoading] = useState(true);
-  const [connectionError, setConnectionError] = useState(false);
+export default async function Dashboard() {
+  // 1. Fetch live tournament records directly on the secure server
+  const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
+    adminDb.collection('usopen_participants').get(),
+    adminDb.collection('usopen_playerScores').get(),
+    adminDb.collection('usopen_config').doc('tournament').get(),
+  ]);
 
-  useEffect(() => {
-    const unsubP = onSnapshot(collection(db, 'usopen_participants'), (snap) => {
-      setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)));
-      setLoading(false);
-      setConnectionError(false);
-    }, (error) => {
-      console.error('Firestore connection error (participants):', error);
-      setConnectionError(true);
-      setLoading(false);
-    });
-
-    const unsubS = onSnapshot(collection(db, 'usopen_playerScores'), (snap) => {
-      const sMap: Record<string, PlayerScore> = {};
-      snap.docs.forEach(d => {
-        const data = d.data() as PlayerScore;
-        sMap[data.playerName] = data;
-      });
-      setScores(sMap);
-    }, (error) => {
-      console.error('Firestore connection error (scores):', error);
-      setConnectionError(true);
-    });
-
-    const unsubC = onSnapshot(doc(db, 'usopen_config', 'tournament'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.lastUpdated) {
-          setLastUpdated(data.lastUpdated.toDate());
-        }
-        if (data.cutline !== undefined) {
-          setCutline(data.cutline);
-        }
-        if (data.playoffComplete !== undefined) {
-          setPlayoffComplete(data.playoffComplete);
-        }
-      }
-    }, (error) => {
-      console.error('Firestore connection error (config):', error);
-      setConnectionError(true);
-    });
-
-    return () => {
-      unsubP();
-      unsubS();
-      unsubC();
-    };
-  }, []);
-
-  // Only subscribe to playoffScores when playoff is complete
-  useEffect(() => {
-    if (!playoffComplete) return;
-
-    const unsubPS = onSnapshot(collection(db, 'usopen_playoffScores'), (snap) => {
-      const psMap: Record<string, any> = {};
-      snap.docs.forEach(d => {
-        psMap[d.id] = d.data();
-      });
-      setPlayoffScores(psMap);
-    }, (error) => {
-      console.error('Firestore connection error (playoffScores):', error);
-    });
-
-    return () => unsubPS();
-  }, [playoffComplete]);
-
-  const formatScore = (score: number | null | undefined) => {
-    if (score === 0) return 'E';
-    if (score === null || score === undefined) return '-';
-    return score > 0 ? `+${score}` : score.toString();
-  };
-
-  const isPlayerCut = (scoreData: PlayerScore | undefined) => {
-    if (!scoreData) return true; // If missing completely, treat as cut for safety
-    if (cutline !== null && typeof scoreData.day1 === 'number' && typeof scoreData.day2 === 'number') {
-      return (scoreData.day1 + scoreData.day2) > cutline;
-    }
-    return !!scoreData.isCut;
-  };
-
-  const calculateDailyScore = (participant: Participant, day: number) => {
-    const dayKey = `day${day}` as 'day1' | 'day2' | 'day3' | 'day4';
-    const playerScores = participant.players.map((p, index) => {
-      const scoreData = scores[p];
-      
-      // If player data is completely missing
-      if (!scoreData) {
-        return (day === 3 || day === 4) ? 999 : 0;
-      }
-
-      // If it's the 4th player or beyond, their scores only count on day 3 and 4
-      if (index >= 3 && (day === 1 || day === 2)) {
-        return 999;
-      }
-
-      // If it's day 3 or 4 and the player is cut, they don't count towards the lowest 2
-      if ((day === 3 || day === 4) && isPlayerCut(scoreData)) {
-        return 999; 
-      }
-
-      const score = scoreData[dayKey];
-      // If the specific day's score is missing
-      if (typeof score !== 'number') {
-        return (day === 3 || day === 4) ? 999 : 0;
-      }
-      
-      return score;
-    });
-    
-    // Sort and take lowest 2
-    const sorted = [...playerScores].sort((a, b) => a - b);
-    
-    // If we are on day 3 or 4 and have fewer than 2 active players, 
-    // we return a high score to indicate they aren't competitive if they haven't been assigned a replacement
-    // But the user said they will assign a second player.
-    // So if they have 1 player, and we take top 2, the second one will be 999.
-    
-    const s1 = sorted[0];
-    const s2 = sorted[1];
-
-    if (s1 === 999) return 0; // No active players
-    if (s2 === 999) return s1; // Only 1 active player (should be fixed by admin assignment)
-    
-    return s1 + s2;
-  };
-
-  const getParticipantStats = (participant: Participant) => {
-    const d1 = calculateDailyScore(participant, 1);
-    const d2 = calculateDailyScore(participant, 2);
-    const d3 = calculateDailyScore(participant, 3);
-    const d4 = calculateDailyScore(participant, 4);
-    
-    // Check if participant is cut (all players cut after day 2)
-    const activePlayersDay3 = participant.players.filter(p => !isPlayerCut(scores[p])).length;
-    const isCut = activePlayersDay3 === 0;
-
-    const total = d1 + d2 + d3 + d4;
-    return { d1, d2, d3, d4, total, isCut };
-  };
-
-  const PRIZE_POOLS = PRIZES.map(p => p.value);
-
-  const sortedStats = participants.map(p => ({
-    ...p,
-    stats: getParticipantStats(p)
-  })).sort((a, b) => {
-    // Cut participants go to the bottom
-    if (a.stats.isCut && !b.stats.isCut) return 1;
-    if (!a.stats.isCut && b.stats.isCut) return -1;
-    return a.stats.total - b.stats.total;
+  const participants = participantsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant));
+  
+  const scores: Record<string, PlayerScore> = {};
+  scoresSnap.docs.forEach(d => {
+    const data = d.data() as PlayerScore;
+    scores[data.playerName] = data;
   });
 
-  // Group by score to calculate payouts
-  const scoreGroups = new Map<number, number>(); // score -> count
-  sortedStats.forEach(p => {
-    if (!p.stats.isCut) {
-      scoreGroups.set(p.stats.total, (scoreGroups.get(p.stats.total) || 0) + 1);
-    }
-  });
+  const configData = configSnap.data();
+  const cutline = configData?.cutline ?? null;
+  const playoffComplete = configData?.playoffComplete ?? false;
+  const lastUpdated = configData?.lastUpdated ? configData.lastUpdated.toDate() : null;
 
-  let currentPoolIndex = 0;
-  const payouts = new Map<number, number>(); // score -> payout amount
-
-  // Calculate payouts per score
-  const uniqueScores = Array.from(scoreGroups.keys()).sort((a, b) => a - b);
-  for (const score of uniqueScores) {
-    const count = scoreGroups.get(score)!;
-    let poolSum = 0;
-    for (let i = 0; i < count; i++) {
-      if (currentPoolIndex + i < PRIZE_POOLS.length) {
-        poolSum += PRIZE_POOLS[currentPoolIndex + i];
-      }
-    }
-    payouts.set(score, poolSum / count);
-    currentPoolIndex += count;
+  // Only query playoff scores when the playoff is completed
+  let playoffScores: Record<string, PlayoffScore> = {};
+  if (playoffComplete) {
+    const playoffSnap = await adminDb.collection('usopen_playoffScores').get();
+    playoffSnap.docs.forEach(d => {
+      playoffScores[d.id] = d.data() as PlayoffScore;
+    });
   }
 
-  const allStats = sortedStats.map((p, index) => {
-    const rankIndex = sortedStats.findIndex(s => s.stats.total === p.stats.total);
-    const rank = p.stats.isCut ? 'C' : rankIndex + 1;
-    const payout = p.stats.isCut ? 0 : (payouts.get(p.stats.total) || 0);
+  // 2. Pure business logic derivations
+  const allStats = computeParticipantStandings(participants, scores, cutline, PRIZES);
 
-    return {
-      ...p,
-      rank,
-      payout
-    };
-  });
-
-  const getRankStyle = (rank: number | string) => {
-    switch (rank) {
-      case 1: return 'bg-[#FFD700] text-[#001A2E] font-black'; // Gold
-      case 2: return 'bg-[#C0C0C0] text-[#001A2E] font-black'; // Silver
-      case 3: return 'bg-[#CD7F32] text-white font-black'; // Bronze
-      case 4: return 'bg-[#B87333] text-white font-black'; // Copper
-      case 'C': return 'bg-red-50 text-red-500 border border-red-100 font-black'; // Cut
-      default: return 'bg-[#F4F8FA] text-[#00365F]';
-    }
-  };
-
-  const getDayMoneyWinners = (day: number) => {
-    if (participants.length === 0 || Object.keys(scores).length === 0) return [];
-    
-    const dayKey = `day${day}` as keyof PlayerScore;
-    
-    // 1. Find all active players for this day and their scores
-    const activePlayersWithScores = Object.values(scores).filter(s => {
-      // If it's day 3 or 4, ignore cut players
-      if ((day === 3 || day === 4) && isPlayerCut(s)) return false;
-      return typeof s[dayKey] === 'number';
-    });
-
-    if (activePlayersWithScores.length === 0) return [];
-
-    // 1.5 Only consider players who were actually drafted by participants AND eligible for this day
-    const eligiblePlayerNames = new Set(
-      participants.flatMap(p => 
-        p.players.filter((_, index) => {
-          if (index >= 3 && (day === 1 || day === 2)) return false;
-          return true;
-        })
-      )
-    );
-    const draftedPlayersWithScores = activePlayersWithScores.filter(s => eligiblePlayerNames.has(s.playerName));
-
-    if (draftedPlayersWithScores.length === 0) return [];
-
-    // 2. Find the absolute minimum and maximum score shot by any DRAFTED player today
-    const dayScores = draftedPlayersWithScores.map(s => s[dayKey] as number);
-    const minScore = Math.min(...dayScores);
-    const maxScore = Math.max(...dayScores);
-    
-    // If everyone is at exactly 0, the day hasn't started yet (or no one has scored)
-    if (minScore === 0 && maxScore === 0) {
-      return [];
-    }
-    
-    // 3. Find which players shot this min score
-    const winningPlayerNames = draftedPlayersWithScores
-      .filter(s => s[dayKey] === minScore)
-      .map(s => s.playerName);
-      
-    // 4. Find participants who have at least one of these players AND the player is eligible
-    return allStats.filter(p => 
-      p.players.some((playerName, index) => {
-        if (index >= 3 && (day === 1 || day === 2)) return false;
-        return winningPlayerNames.includes(playerName);
-      })
-    ).map(p => ({
-      ...p,
-      dayBestScore: minScore
-    }));
-  };
-
-  // --- NEW LOGIC FOR PLAYER SCOREBOARD ---
+  // Drafted map helper
   const draftedBy = new Map<string, string>();
   participants.forEach(p => {
     p.players.forEach(player => {
@@ -308,12 +71,13 @@ export default function Dashboard() {
     });
   });
 
+  // Calculate overall player ranking lists
   const playerStats = Object.values(scores).map(s => {
     const total = (typeof s.day1 === 'number' ? s.day1 : 0) + 
                   (typeof s.day2 === 'number' ? s.day2 : 0) + 
                   (typeof s.day3 === 'number' ? s.day3 : 0) + 
                   (typeof s.day4 === 'number' ? s.day4 : 0);
-    const cutStatus = isPlayerCut(s);
+    const cutStatus = isPlayerCut(s, cutline);
     return { ...s, total, isCut: cutStatus };
   }).sort((a, b) => {
     if (a.isCut && !b.isCut) return 1;
@@ -326,7 +90,7 @@ export default function Dashboard() {
     return { ...p, rank: p.isCut ? '-' : rankIndex + 1 };
   });
 
-  const top10Players: typeof playerRankings = [];
+  const top10Players: any[] = [];
   for (let i = 0; i < playerRankings.length; i++) {
     if (i < 10) {
       top10Players.push(playerRankings[i]);
@@ -343,29 +107,12 @@ export default function Dashboard() {
   const otherDraftedPlayers = playerRankings.filter(p => 
     draftedBy.has(p.playerName) && !top10Players.some(top => top.playerName === p.playerName)
   );
-  // --- END NEW LOGIC ---
-
-  if (connectionError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F4F8FA] gap-4 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg border-2 border-red-200 text-center max-w-md">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Data Unavailable</h2>
-          <p className="text-sm text-gray-600">Unable to connect to the scoring database. Please check back later.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#E4E3E0]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#141414]" />
-      </div>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-[#F4F8FA] text-[#001A2E] p-4 md:p-8 font-sans">
+      {/* Poll and refresh server components every 60 seconds */}
+      <RefreshTimer intervalMs={60000} />
+
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <header className="bg-[#00365F] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#D4AF37]">
@@ -410,7 +157,7 @@ export default function Dashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map(day => {
-                  const winners = getDayMoneyWinners(day);
+                  const winners = getDayMoneyWinners(participants, scores, day, cutline, allStats);
                   return (
                     <Card key={day} className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
                       <CardHeader className="p-4 bg-[#00365F] text-white">
@@ -450,17 +197,16 @@ export default function Dashboard() {
         <LeaderboardTable
           allStats={allStats}
           scores={scores}
-          isPlayerCut={isPlayerCut}
+          isPlayerCut={(p) => isPlayerCut(p, cutline)}
           formatScore={formatScore}
           playoffComplete={playoffComplete}
         />
-
 
         {/* Day Money Winners (shown below Final Standings when playoff is complete, hidden here) */}
         {!playoffComplete && (
           <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(day => {
-              const winners = getDayMoneyWinners(day);
+              const winners = getDayMoneyWinners(participants, scores, day, cutline, allStats);
               return (
                 <Card key={day} className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
                   <CardHeader className="p-4 bg-[#00365F] text-white">
