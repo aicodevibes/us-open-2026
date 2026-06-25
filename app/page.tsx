@@ -15,7 +15,7 @@ import {
   computeParticipantStandings, 
   getDayMoneyWinners 
 } from '@/lib/scoring';
-import { Participant, PlayerScore, PlayoffScore } from '@/types';
+import { Participant, PlayerScore, PlayoffScore, PlayerRanking } from '@/types';
 
 // Force dynamic rendering so server fetches live data on each request
 export const dynamic = 'force-dynamic';
@@ -87,10 +87,10 @@ export default async function Dashboard() {
 
   const playerRankings = playerStats.map((p, index) => {
     const rankIndex = playerStats.findIndex(s => s.total === p.total && s.isCut === p.isCut);
-    return { ...p, rank: p.isCut ? '-' : rankIndex + 1 };
+    return { ...p, rank: p.isCut ? '-' : rankIndex + 1 } as PlayerRanking;
   });
 
-  const top10Players: any[] = [];
+  const top10Players: PlayerRanking[] = [];
   for (let i = 0; i < playerRankings.length; i++) {
     if (i < 10) {
       top10Players.push(playerRankings[i]);

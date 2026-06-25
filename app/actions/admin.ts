@@ -7,6 +7,8 @@ import { INITIAL_PARTICIPANTS, INITIAL_GREEDY_PARTICIPANTS } from '@/lib/initial
 import { syncEspnScores, fetchRound4HolesForPlayers } from '@/lib/espn';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
+import { Participant, PlayerScore } from '@/types';
+import { isPlayerCut, calculateDailyScore } from '@/lib/scoring';
 
 /**
  * Authenticates user and checks whitelisted admin emails.
@@ -162,48 +164,19 @@ export async function finalizePlayoffAction(idToken: string) {
 
   const cutline = configSnap.data()?.cutline ?? null;
   
-  const participants = participantsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-  const scores: Record<string, any> = {};
+  const participants = participantsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Participant[];
+  const scores: Record<string, PlayerScore> = {};
   scoresSnap.docs.forEach(doc => {
-    const data = doc.data();
+    const data = doc.data() as PlayerScore;
     scores[data.playerName] = data;
   });
 
-  const isPlayerCutLocal = (scoreData: any) => {
-    if (!scoreData) return true;
-    if (cutline !== null && typeof scoreData.day1 === 'number' && typeof scoreData.day2 === 'number') {
-      return (scoreData.day1 + scoreData.day2) > cutline;
-    }
-    return !!scoreData.isCut;
-  };
-
-  const calculateDailyScoreLocal = (participant: any, day: number) => {
-    const dayKey = `day${day}`;
-    const playerScores = participant.players.map((p: string, index: number) => {
-      const scoreData = scores[p];
-      if (!scoreData) return (day === 3 || day === 4) ? 999 : 0;
-      if (index >= 3 && (day === 1 || day === 2)) return 999;
-      if ((day === 3 || day === 4) && isPlayerCutLocal(scoreData)) return 999;
-      
-      const score = scoreData[dayKey];
-      if (typeof score !== 'number') return (day === 3 || day === 4) ? 999 : 0;
-      return score;
-    });
-    
-    const sorted = [...playerScores].sort((a, b) => a - b);
-    const s1 = sorted[0];
-    const s2 = sorted[1];
-    if (s1 === 999) return 0;
-    if (s2 === 999) return s1;
-    return s1 + s2;
-  };
-
   const stats = participants.map(p => {
-    const d1 = calculateDailyScoreLocal(p, 1);
-    const d2 = calculateDailyScoreLocal(p, 2);
-    const d3 = calculateDailyScoreLocal(p, 3);
-    const d4 = calculateDailyScoreLocal(p, 4);
-    const activePlayersDay3 = p.players.filter((name: string) => !isPlayerCutLocal(scores[name])).length;
+    const d1 = calculateDailyScore(p, 1, scores, cutline);
+    const d2 = calculateDailyScore(p, 2, scores, cutline);
+    const d3 = calculateDailyScore(p, 3, scores, cutline);
+    const d4 = calculateDailyScore(p, 4, scores, cutline);
+    const activePlayersDay3 = p.players.filter((name: string) => !isPlayerCut(scores[name], cutline)).length;
     return {
       participant: p,
       total: d1 + d2 + d3 + d4,
@@ -219,7 +192,7 @@ export async function finalizePlayoffAction(idToken: string) {
   const tiedScores = top4Scores.filter((score, index, arr) => arr.indexOf(score) !== index);
   const uniqueTiedScores = Array.from(new Set(tiedScores));
 
-  let tiedParticipants: any[] = [];
+  let tiedParticipants: typeof ranked = [];
   if (uniqueTiedScores.length > 0) {
     tiedParticipants = ranked.filter(r => uniqueTiedScores.includes(r.total));
   }
@@ -230,12 +203,12 @@ export async function finalizePlayoffAction(idToken: string) {
       const participantObj = p.participant;
       const playerStats = participantObj.players.map((name: string) => {
           const scoreData = scores[name];
-          if (!scoreData || isPlayerCutLocal(scoreData)) return { name, score: 999 };
+          if (!scoreData || isPlayerCut(scoreData, cutline)) return { name, score: 999 };
           if (typeof scoreData.day4 !== 'number') return { name, score: 999 };
           return { name, score: scoreData.day4 };
       });
 
-      playerStats.sort((a: any, b: any) => a.score - b.score);
+      playerStats.sort((a, b) => a.score - b.score);
       
       if (playerStats[0] && playerStats[0].score !== 999) playersToFetch.add(playerStats[0].name);
       if (playerStats[1] && playerStats[1].score !== 999) playersToFetch.add(playerStats[1].name);

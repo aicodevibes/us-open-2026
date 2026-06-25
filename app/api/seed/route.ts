@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 
+interface SeedParticipantInput {
+  name: string;
+  players: string[];
+}
+
 /**
  * @api {post} /api/seed Seed Tournament Data
  * @apiName SeedTournament
@@ -19,7 +24,7 @@ import { adminDb } from '@/lib/firebase-admin';
  */
 export async function POST(request: Request) {
   try {
-    const { secret, data } = await request.json();
+    const { secret, data } = await request.json() as { secret: string; data: SeedParticipantInput[] };
 
     if (secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -36,7 +41,7 @@ export async function POST(request: Request) {
     existingParticipants.forEach(doc => batch.delete(doc.ref));
 
     // 2. Add New Participants
-    data.forEach((p: any) => {
+    data.forEach((p) => {
       const docRef = adminDb.collection('usopen_participants').doc();
       batch.set(docRef, {
         name: p.name,
@@ -45,8 +50,8 @@ export async function POST(request: Request) {
     });
 
     // 3. Initialize/Update Player Scores
-    const allPlayers = Array.from(new Set(data.flatMap((p: any) => p.players)));
-    allPlayers.forEach((playerName: any) => {
+    const allPlayers = Array.from(new Set(data.flatMap((p) => p.players)));
+    allPlayers.forEach((playerName) => {
       const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
       batch.set(playerRef, {
         playerName,

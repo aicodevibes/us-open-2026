@@ -25,7 +25,13 @@ export interface PlayerScore {
 export interface PlayoffScore {
   playerName: string;
   round4Holes: number[];
-  updatedAt?: any;
+  updatedAt?: Date | { toDate: () => Date };
+}
+
+export interface PlayerRanking extends PlayerScore {
+  total: number;
+  isCut: boolean;
+  rank: number | string;
 }
 
 export interface TournamentConfig {

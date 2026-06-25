@@ -25,6 +25,25 @@ export interface EspnPlayerScore {
   linescores: EspnHoleScore[]; // Array of hole scores
 }
 
+export interface EspnCompetitor {
+  score?: string | number;
+  status?: {
+    type?: {
+      name?: string;
+      description?: string;
+    };
+  };
+  linescores?: {
+    period: number;
+    value?: number | string;
+    displayValue?: string;
+  }[];
+  athlete: {
+    displayName?: string;
+    fullName?: string;
+  };
+}
+
 /**
  * Fetches the leaderboard and attempts to extract the round 4 hole-by-hole scores
  * for a specific list of player names.
@@ -46,7 +65,7 @@ export async function fetchRound4HolesForPlayers(playerNames: string[]): Promise
     
     const event = data.events?.[0];
     const competition = event?.competitions?.[0];
-    const competitors = competition?.competitors || [];
+    const competitors = (competition?.competitors || []) as EspnCompetitor[];
 
     const playoffData: Record<string, number[]> = {};
 
@@ -55,12 +74,12 @@ export async function fetchRound4HolesForPlayers(playerNames: string[]): Promise
       const fullName = athlete?.displayName || "";
 
       if (playerNames.includes(fullName)) {
-        const linescores: any[] = competitor.linescores || [];
+        const linescores = competitor.linescores || [];
         const holes: number[] = [];
         
         if (linescores.length >= 18) {
              for (let i = 0; i < 18; i++) {
-                 holes.push(linescores[i].value || 0);
+                 holes.push(Number(linescores[i].value || 0));
              }
         } else {
              console.warn(`Could not find 18 hole scores for ${fullName} in leaderboard response.`);
@@ -103,7 +122,7 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
 
     const statusState = event.status?.type?.state;
     const isPreEvent = statusState === 'pre';
-    const competitors = event.competitions[0].competitors || [];
+    const competitors = (event.competitions[0].competitors || []) as EspnCompetitor[];
 
     console.log(`ESPN event status: ${event.status?.type?.description} (${statusState}), ${competitors.length} competitors`);
 
@@ -164,22 +183,25 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
     const batch = adminDb.batch();
     let updatedCount = 0;
 
-    competitors.forEach((c: any) => {
+    competitors.forEach((c) => {
       const rounds = [0, 0, 0, 0];
       const isCut = c.score === 'CUT' ||
         c.status?.type?.name === 'STATUS_CUT' ||
         c.status?.type?.description?.toLowerCase().includes('cut');
 
       if (c.linescores) {
-        c.linescores.forEach((ls: any) => {
+        c.linescores.forEach((ls) => {
           if (ls.period >= 1 && ls.period <= 4) {
-            const scoreVal = parseInt(ls.displayValue || ls.value || '0');
+            const scoreVal = parseInt(String(ls.displayValue || ls.value || '0'));
             rounds[ls.period - 1] = isNaN(scoreVal) ? 0 : scoreVal;
           }
         });
       }
 
       const playerName = c.athlete.displayName || c.athlete.fullName;
+      if (!playerName) {
+        return;
+      }
       const docRef = adminDb.collection('usopen_playerScores').doc(playerName);
       batch.set(docRef, {
         playerName,

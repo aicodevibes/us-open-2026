@@ -39,11 +39,8 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.email_verified == true) &&
-        (request.auth.token.email == "jamesrobertlosinger@gmail.com" ||
-         request.auth.token.email == "jl4798@gmail.com" ||
-         request.auth.token.email == "aicodevibes@gmail.com" ||
-         (exists(/databases/$(database)/documents/usopen_users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/usopen_users/$(request.auth.uid)).data.role == 'admin'));
+        exists(/databases/$(database)/documents/usopen_users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/usopen_users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Participants: Anyone can read, only admin can write
