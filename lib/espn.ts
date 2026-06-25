@@ -9,6 +9,8 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { ESPN_EVENT_ID } from './constants';
+import { getActiveEventIdServer, ensureEventExistsServer } from './events-server';
+import { EspnCalendarEvent } from '@/types';
 
 export { ESPN_EVENT_ID };
 export const ESPN_API_URL = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${ESPN_EVENT_ID}`;
@@ -45,12 +47,57 @@ export interface EspnCompetitor {
 }
 
 /**
+ * Fetches the PGA Tour schedule from ESPN's scoreboard calendar and returns upcoming events.
+ */
+export async function fetchUpcomingEspnEvents(): Promise<EspnCalendarEvent[]> {
+  try {
+    const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    const calendar = data.leagues?.[0]?.calendar || [];
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    return calendar
+      .map((item: any) => ({
+        id: item.id,
+        label: item.label,
+        startDate: item.startDate,
+        endDate: item.endDate
+      }))
+      .filter((item: any) => new Date(item.endDate) >= yesterday)
+      .slice(0, 8); // Limit to the next 8 events
+  } catch (e) {
+    console.error('Failed to fetch ESPN schedule:', e);
+    return [];
+  }
+}
+
+/**
  * Fetches the leaderboard and attempts to extract the round 4 hole-by-hole scores
  * for a specific list of player names.
  */
-export async function fetchRound4HolesForPlayers(playerNames: string[]): Promise<Record<string, number[]>> {
+export async function fetchRound4HolesForPlayers(playerNames: string[], eventId?: string): Promise<Record<string, number[]>> {
   try {
-    const response = await fetch(ESPN_API_URL, {
+    const finalEventId = eventId || await getActiveEventIdServer();
+    await ensureEventExistsServer(finalEventId);
+
+    const eventRef = adminDb.collection('golf_events').doc(finalEventId);
+    const eventSnap = await eventRef.get();
+    const eventData = eventSnap.data();
+    const espnId = eventData?.espnEventId || finalEventId;
+    
+    const apiUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${espnId}`;
+    console.log(`fetchRound4HolesForPlayers: Fetching detailed scores from ESPN URL: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
@@ -98,13 +145,23 @@ export async function fetchRound4HolesForPlayers(playerNames: string[]): Promise
 }
 
 /**
- * Fetches scores from ESPN and syncs them to Firestore usopen_playerScores.
+ * Fetches scores from ESPN and syncs them to Firestore golf_events/{eventId}/playerScores.
  * Updates config timestamp lastUpdated.
  */
-export async function syncEspnScores(): Promise<{ success: boolean; message?: string; updatedCount?: number }> {
+export async function syncEspnScores(eventId?: string): Promise<{ success: boolean; message?: string; updatedCount?: number }> {
   try {
-    console.log('Fetching live scores from ESPN URL:', ESPN_API_URL);
-    const res = await fetch(ESPN_API_URL, {
+    const finalEventId = eventId || await getActiveEventIdServer();
+    await ensureEventExistsServer(finalEventId);
+
+    const eventRef = adminDb.collection('golf_events').doc(finalEventId);
+    const eventSnap = await eventRef.get();
+    const eventData = eventSnap.data();
+    const espnId = eventData?.espnEventId || finalEventId;
+
+    const apiUrl = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=${espnId}`;
+    console.log(`syncEspnScores: Fetching live scores from ESPN URL: ${apiUrl}`);
+
+    const res = await fetch(apiUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
@@ -132,7 +189,7 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
       const batch = adminDb.batch();
 
       // 1. Reset existing scores
-      const sSnap = await adminDb.collection('usopen_playerScores').get();
+      const sSnap = await eventRef.collection('playerScores').get();
       sSnap.docs.forEach((doc) => {
         batch.update(doc.ref, {
           day1: 0,
@@ -144,7 +201,7 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
       });
 
       // 2. Fetch all participants to ensure drafted players are initialized
-      const pSnap = await adminDb.collection('usopen_participants').get();
+      const pSnap = await eventRef.collection('participants').get();
       const draftedPlayers = new Set<string>();
       pSnap.docs.forEach(doc => {
         const data = doc.data();
@@ -154,7 +211,7 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
       });
 
       draftedPlayers.forEach((playerName) => {
-        const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
+        const playerRef = eventRef.collection('playerScores').doc(playerName);
         batch.set(playerRef, {
           playerName,
           day1: 0,
@@ -165,11 +222,10 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
         }, { merge: true });
       });
 
-      // Update last updated timestamp
-      const configRef = adminDb.collection('usopen_config').doc('tournament');
-      batch.set(configRef, {
+      // Update last updated timestamp on event document
+      batch.update(eventRef, {
         lastUpdated: FieldValue.serverTimestamp()
-      }, { merge: true });
+      });
 
       await batch.commit();
 
@@ -202,7 +258,7 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
       if (!playerName) {
         return;
       }
-      const docRef = adminDb.collection('usopen_playerScores').doc(playerName);
+      const docRef = eventRef.collection('playerScores').doc(playerName);
       batch.set(docRef, {
         playerName,
         day1: rounds[0] ?? 0,
@@ -214,11 +270,10 @@ export async function syncEspnScores(): Promise<{ success: boolean; message?: st
       updatedCount++;
     });
 
-    // Update last updated timestamp
-    const configRef = adminDb.collection('usopen_config').doc('tournament');
-    batch.set(configRef, {
+    // Update last updated timestamp on event document
+    batch.update(eventRef, {
       lastUpdated: FieldValue.serverTimestamp()
-    }, { merge: true });
+    });
 
     await batch.commit();
 

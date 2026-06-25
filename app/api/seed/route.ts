@@ -1,5 +1,8 @@
+// app/api/seed/route.ts
+
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getActiveEventIdServer, ensureEventExistsServer } from '@/lib/events-server';
 
 interface SeedParticipantInput {
   name: string;
@@ -10,21 +13,15 @@ interface SeedParticipantInput {
  * @api {post} /api/seed Seed Tournament Data
  * @apiName SeedTournament
  * @apiGroup Admin
- * @apiDescription Securely initializes the Firestore database with participant rosters and initializes player score records.
+ * @apiDescription Securely initializes the Firestore database with participant rosters for a specific event.
  * 
  * @apiBody {string} secret - The administrative CRON_SECRET for authentication.
  * @apiBody {Array} data - Array of participant objects: { name: string, players: string[] }.
- * 
- * @apiSuccess {boolean} success - Indicates if the seeding was successful.
- * @apiSuccess {number} participantsCount - Number of participants added.
- * @apiSuccess {number} playersCount - Number of unique players initialized.
- * 
- * @apiError (401) Unauthorized - If the provided secret is incorrect.
- * @apiError (400) BadRequest - If the data format is invalid.
+ * @apiBody {string} [eventId] - The ID of the event to seed, defaults to the active event.
  */
 export async function POST(request: Request) {
   try {
-    const { secret, data } = await request.json() as { secret: string; data: SeedParticipantInput[] };
+    const { secret, data, eventId } = await request.json() as { secret: string; data: SeedParticipantInput[]; eventId?: string };
 
     if (secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,15 +31,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid data format. Expected an array of participants.' }, { status: 400 });
     }
 
+    const targetEventId = eventId || await getActiveEventIdServer();
+    await ensureEventExistsServer(targetEventId);
+
+    const eventRef = adminDb.collection('golf_events').doc(targetEventId);
     const batch = adminDb.batch();
 
-    // 1. Clear existing participants (Optional, but good for clean seed)
-    const existingParticipants = await adminDb.collection('usopen_participants').get();
+    // 1. Clear existing participants in this event
+    const existingParticipants = await eventRef.collection('participants').get();
     existingParticipants.forEach(doc => batch.delete(doc.ref));
 
     // 2. Add New Participants
     data.forEach((p) => {
-      const docRef = adminDb.collection('usopen_participants').doc();
+      const docRef = eventRef.collection('participants').doc();
       batch.set(docRef, {
         name: p.name,
         players: p.players
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     // 3. Initialize/Update Player Scores
     const allPlayers = Array.from(new Set(data.flatMap((p) => p.players)));
     allPlayers.forEach((playerName) => {
-      const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
+      const playerRef = eventRef.collection('playerScores').doc(playerName);
       batch.set(playerRef, {
         playerName,
         day1: 0,

@@ -3,32 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===============================================================
-    // Assumed Data Model (US Open 2026 prefix)
-    // ===============================================================
-    //
-    // Collection: usopen_participants
-    // Document ID: auto-generated
-    // Fields:
-    //   - name: string (required)
-    //   - players: string[] (required, size 3)
-    //
-    // Collection: usopen_playerScores
-    // Document ID: playerName (string)
-    // Fields:
-    //   - playerName: string (required)
-    //   - day1: number (optional)
-    //   - day2: number (optional)
-    //   - day3: number (optional)
-    //   - day4: number (optional)
-    //   - isCut: boolean (optional)
-    //
-    // Collection: usopen_config
-    // Document ID: tournament
-    // Fields:
-    //   - dayMoneyAmount: number (optional)
-    //   - lastUpdated: timestamp (optional)
-    //   - cutline: number (optional)
-    //
+    // Assumed Data Model (Golf Events prefix)
     // ===============================================================
 
     // Helper Functions
@@ -43,6 +18,42 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usopen_users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Golf Events & Subcollections: Anyone can read, only admin can write
+    match /golf_events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /participants/{participantId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /greedyParticipants/{participantId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /playerScores/{playerName} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /playoffScores/{playerName} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    // Golf Config: Anyone can read, only admin can write
+    match /golf_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ===============================================================
+    // Legacy Rules (for fallback / compatibility)
+    // ===============================================================
+
     // Participants: Anyone can read, only admin can write
     match /usopen_participants/{participantId} {
       allow read: if true;
@@ -56,8 +67,6 @@ service cloud.firestore {
     }
 
     // PlayerScores: Anyone can read, only admin can write
-    // NOTE: The /api/sync cron job uses the Firebase Admin SDK,
-    // which bypasses these rules entirely. No public writes needed.
     match /usopen_playerScores/{playerName} {
       allow read: if true;
       allow write: if isAdmin();
@@ -70,8 +79,6 @@ service cloud.firestore {
     }
 
     // Config: Anyone can read, only admin can write
-    // NOTE: The /api/sync cron job uses the Firebase Admin SDK,
-    // which bypasses these rules entirely. No public writes needed.
     match /usopen_config/{configId} {
       allow read: if true;
       allow write: if isAdmin();

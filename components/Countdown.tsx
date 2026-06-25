@@ -18,49 +18,63 @@ interface TimeLeft {
   seconds: number;
 }
 
+interface CountdownProps {
+  startDate?: string;
+  endDate?: string;
+}
+
 /**
- * Countdown component that displays time remaining until TOURNAMENT_START_DATE.
+ * Countdown component that displays time remaining until the specified tournament start date.
  * If the current time is between start and end date, it displays "TOURNAMENT IN PROGRESS".
  * If the current time is past the end date, it displays "TOURNAMENT COMPLETED".
- * 
- * @returns {JSX.Element | null} Countdown UI or tournament status banner.
  */
-export function Countdown() {
+export function Countdown({ startDate = TOURNAMENT_START_DATE, endDate = TOURNAMENT_END_DATE }: CountdownProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
-    const startDate = new Date(TOURNAMENT_START_DATE).getTime();
-    const endDate = new Date(TOURNAMENT_END_DATE).getTime();
+    const startMs = new Date(startDate).getTime();
+    const endMs = new Date(endDate).getTime();
 
-    const timer = setInterval(() => {
+    const updateTimer = () => {
       const now = new Date().getTime();
       
-      if (now > endDate) {
+      if (now > endMs) {
         setIsCompleted(true);
         setHasStarted(true);
-        clearInterval(timer);
-        return;
+        return true; // flag to clear interval
       }
       
-      if (now > startDate) {
+      if (now > startMs) {
         setHasStarted(true);
-        clearInterval(timer);
-        return;
+        setIsCompleted(false);
+        return true; // flag to clear interval
       }
 
-      const distance = startDate - now;
+      const distance = startMs - now;
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
         minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
         seconds: Math.floor((distance % (1000 * 60)) / 1000),
       });
+      return false;
+    };
+
+    // Run once immediately
+    const shouldStop = updateTimer();
+    if (shouldStop) return;
+
+    const timer = setInterval(() => {
+      const shouldStopNow = updateTimer();
+      if (shouldStopNow) {
+        clearInterval(timer);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [startDate, endDate]);
 
   if (isCompleted) {
     return (

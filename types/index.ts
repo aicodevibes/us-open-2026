@@ -40,6 +40,19 @@ export interface TournamentConfig {
   playoffComplete: boolean;
 }
 
+export interface TournamentEvent {
+  id: string;
+  name: string;
+  subtitle: string;
+  espnEventId: string;
+  startDate: string;
+  endDate: string;
+  cutline: number | null;
+  playoffComplete: boolean;
+  lastUpdated?: any; // Can be Date or Firestore Timestamp
+}
+
+
 export interface ParticipantStats {
   id: string;
   name: string;
@@ -66,3 +79,11 @@ export interface DailyBonus {
   day: string;
   amount: string;
 }
+
+export interface EspnCalendarEvent {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+

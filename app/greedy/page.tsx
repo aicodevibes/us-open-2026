@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, DollarSign, Info, Timer } from 'lucide-react';
-import { GREEDY_PRIZE_POOL, TOURNAMENT_NAME } from '@/lib/constants';
+import { GREEDY_PRIZE_POOL } from '@/lib/constants';
 import { RefreshTimer } from '@/components/RefreshTimer';
 import { isPlayerCut } from '@/lib/scoring';
 import { GreedyParticipant, PlayerScore } from '@/types';
+import { getActiveEventIdServer, ensureEventExistsServer } from '@/lib/events-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,16 @@ const formatScore = (score: number | null | undefined) => {
 };
 
 export default async function GreedyPage() {
-  // 1. Fetch data on the secure server
-  const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
-    adminDb.collection('usopen_greedyParticipants').get(),
-    adminDb.collection('usopen_playerScores').get(),
-    adminDb.collection('usopen_config').doc('tournament').get(),
+  // 1. Determine active event and fetch data on the secure server
+  const activeEventId = await getActiveEventIdServer();
+  await ensureEventExistsServer(activeEventId);
+
+  const eventRef = adminDb.collection('golf_events').doc(activeEventId);
+
+  const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
+    eventRef.collection('greedyParticipants').get(),
+    eventRef.collection('playerScores').get(),
+    eventRef.get(),
   ]);
 
   const participants = participantsSnap.docs.map(d => ({ id: d.id, ...d.data() } as GreedyParticipant));
@@ -34,13 +40,10 @@ export default async function GreedyPage() {
     scores[data.playerName] = data;
   });
 
-  const lastUpdated = configSnap.exists && configSnap.data()?.lastUpdated
-    ? configSnap.data()?.lastUpdated.toDate()
-    : null;
-
-  const cutline = configSnap.exists && configSnap.data()?.cutline !== undefined
-    ? configSnap.data()?.cutline
-    : null;
+  const eventData = eventSnap.data();
+  const eventName = eventData?.name || "US Open";
+  const cutline = eventData?.cutline ?? null;
+  const lastUpdated = eventData?.lastUpdated ? eventData.lastUpdated.toDate() : null;
 
   // 2. Calculations
   const getParticipantStats = (participant: GreedyParticipant) => {
@@ -86,7 +89,7 @@ export default async function GreedyPage() {
               <h1 className="text-3xl md:text-5xl font-bold tracking-tighter uppercase font-serif">
                 The Greedy Side Game
               </h1>
-              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-xs">{TOURNAMENT_NAME}</p>
+              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-xs">{eventName}</p>
             </div>
           </div>
           <div className="text-center md:text-right bg-[#001A2E] p-3 rounded-lg border border-white/10 shrink-0">

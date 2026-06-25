@@ -4,10 +4,12 @@
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { getAuthorizedEmails } from '@/lib/constants';
 import { INITIAL_PARTICIPANTS, INITIAL_GREEDY_PARTICIPANTS } from '@/lib/initialData';
-import { syncEspnScores, fetchRound4HolesForPlayers } from '@/lib/espn';
+
+import { syncEspnScores, fetchRound4HolesForPlayers, fetchUpcomingEspnEvents } from '@/lib/espn';
+import { getActiveEventIdServer, ensureEventExistsServer } from '@/lib/events-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
-import { Participant, PlayerScore } from '@/types';
+import { Participant, PlayerScore, TournamentEvent } from '@/types';
 import { isPlayerCut, calculateDailyScore } from '@/lib/scoring';
 
 /**
@@ -27,25 +29,155 @@ async function verifyAdmin(idToken: string) {
   return decodedToken;
 }
 
-export async function seedParticipantsAction(idToken: string) {
+export async function createEventAction(
+  idToken: string,
+  name: string,
+  espnEventId: string,
+  subtitle: string,
+  startDate: string,
+  endDate: string,
+  makeActive: boolean
+) {
   await verifyAdmin(idToken);
 
+  if (!name.trim()) throw new Error('Event name is required');
+  if (!espnEventId.trim()) throw new Error('ESPN Event ID is required');
+
+  const eventRef = adminDb.collection('golf_events').doc();
+  const eventId = eventRef.id;
+
+  const eventData = {
+    name: name.trim(),
+    subtitle: subtitle.trim() || 'Draft Dashboard',
+    espnEventId: espnEventId.trim(),
+    startDate: startDate || new Date().toISOString(),
+    endDate: endDate || new Date().toISOString(),
+    cutline: null,
+    playoffComplete: false,
+    lastUpdated: FieldValue.serverTimestamp()
+  };
+
+  await eventRef.set(eventData);
+
+  if (makeActive) {
+    await adminDb.collection('golf_config').doc('activeEvent').set({
+      activeEventId: eventId
+    }, { merge: true });
+  }
+
+  revalidatePath('/');
+  revalidatePath('/greedy');
+  return { success: true, eventId };
+}
+
+export async function updateEventAction(
+  idToken: string,
+  eventId: string,
+  name: string,
+  espnEventId: string,
+  subtitle: string,
+  startDate: string,
+  endDate: string,
+  makeActive: boolean
+) {
+  await verifyAdmin(idToken);
+
+  if (!eventId) throw new Error('Event ID is required');
+  if (!name.trim()) throw new Error('Event name is required');
+  if (!espnEventId.trim()) throw new Error('ESPN Event ID is required');
+
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  await eventRef.update({
+    name: name.trim(),
+    subtitle: subtitle.trim(),
+    espnEventId: espnEventId.trim(),
+    startDate: startDate,
+    endDate: endDate,
+    lastUpdated: FieldValue.serverTimestamp()
+  });
+
+  if (makeActive) {
+    await adminDb.collection('golf_config').doc('activeEvent').set({
+      activeEventId: eventId
+    }, { merge: true });
+  }
+
+  revalidatePath('/');
+  revalidatePath('/greedy');
+  return { success: true };
+}
+
+export async function deleteEventAction(idToken: string, eventId: string) {
+  await verifyAdmin(idToken);
+
+  if (!eventId) throw new Error('Event ID is required');
+
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
   const batch = adminDb.batch();
 
-  // 1. Clear existing participants
-  const existingParticipants = await adminDb.collection('usopen_participants').get();
+  // Cascade delete subcollections
+  const subcollections = ['participants', 'playerScores', 'greedyParticipants', 'playoffScores'];
+  for (const subName of subcollections) {
+    const snap = await eventRef.collection(subName).get();
+    snap.docs.forEach(doc => batch.delete(doc.ref));
+  }
+
+  batch.delete(eventRef);
+  await batch.commit();
+
+  // Reset active event config if active event was deleted
+  const activeDoc = await adminDb.collection('golf_config').doc('activeEvent').get();
+  if (activeDoc.exists && activeDoc.data()?.activeEventId === eventId) {
+    await adminDb.collection('golf_config').doc('activeEvent').set({
+      activeEventId: ''
+    }, { merge: true });
+  }
+
+  revalidatePath('/');
+  revalidatePath('/greedy');
+  return { success: true };
+}
+
+export async function setActiveEventAction(idToken: string, eventId: string) {
+  await verifyAdmin(idToken);
+
+  if (!eventId) throw new Error('Event ID is required');
+
+  await adminDb.collection('golf_config').doc('activeEvent').set({
+    activeEventId: eventId
+  }, { merge: true });
+
+  revalidatePath('/');
+  revalidatePath('/greedy');
+  return { success: true };
+}
+
+export async function getUpcomingEspnEventsAction(idToken: string) {
+  await verifyAdmin(idToken);
+  return await fetchUpcomingEspnEvents();
+}
+
+export async function seedParticipantsAction(idToken: string, eventId: string) {
+  await verifyAdmin(idToken);
+  await ensureEventExistsServer(eventId);
+
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const batch = adminDb.batch();
+
+  // 1. Clear existing participants in this event
+  const existingParticipants = await eventRef.collection('participants').get();
   existingParticipants.forEach(doc => batch.delete(doc.ref));
 
   // 2. Add New Participants
   INITIAL_PARTICIPANTS.forEach((p) => {
-    const docRef = adminDb.collection('usopen_participants').doc();
+    const docRef = eventRef.collection('participants').doc();
     batch.set(docRef, p);
   });
 
   // 3. Initialize Player Scores
   const allPlayers = Array.from(new Set(INITIAL_PARTICIPANTS.flatMap(p => p.players)));
   allPlayers.forEach((playerName) => {
-    const playerRef = adminDb.collection('usopen_playerScores').doc(playerName);
+    const playerRef = eventRef.collection('playerScores').doc(playerName);
     batch.set(playerRef, {
       playerName,
       day1: 0,
@@ -61,18 +193,20 @@ export async function seedParticipantsAction(idToken: string) {
   return { success: true, count: INITIAL_PARTICIPANTS.length };
 }
 
-export async function seedGreedyParticipantsAction(idToken: string) {
+export async function seedGreedyParticipantsAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
+  await ensureEventExistsServer(eventId);
 
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
   const batch = adminDb.batch();
 
-  // 1. Clear existing greedy participants
-  const existingGreedy = await adminDb.collection('usopen_greedyParticipants').get();
+  // 1. Clear existing greedy participants in this event
+  const existingGreedy = await eventRef.collection('greedyParticipants').get();
   existingGreedy.forEach(doc => batch.delete(doc.ref));
 
   // 2. Add New Greedy Participants
   INITIAL_GREEDY_PARTICIPANTS.forEach((p) => {
-    const docRef = adminDb.collection('usopen_greedyParticipants').doc();
+    const docRef = eventRef.collection('greedyParticipants').doc();
     batch.set(docRef, p);
   });
 
@@ -81,22 +215,31 @@ export async function seedGreedyParticipantsAction(idToken: string) {
   return { success: true, count: INITIAL_GREEDY_PARTICIPANTS.length };
 }
 
-export async function clearAllDataAction(idToken: string) {
+export async function clearAllDataAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
+  await ensureEventExistsServer(eventId);
 
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
   const batch = adminDb.batch();
-  const collections = [
-    'usopen_participants',
-    'usopen_playerScores',
-    'usopen_config',
-    'usopen_greedyParticipants',
-    'usopen_playoffScores'
+  
+  const subcollections = [
+    'participants',
+    'playerScores',
+    'greedyParticipants',
+    'playoffScores'
   ];
 
-  for (const colName of collections) {
-    const snap = await adminDb.collection(colName).get();
+  for (const colName of subcollections) {
+    const snap = await eventRef.collection(colName).get();
     snap.docs.forEach(doc => batch.delete(doc.ref));
   }
+
+  // Reset the config settings on the event document
+  batch.update(eventRef, {
+    cutline: null,
+    playoffComplete: false,
+    lastUpdated: FieldValue.serverTimestamp()
+  });
 
   await batch.commit();
   revalidatePath('/');
@@ -104,21 +247,23 @@ export async function clearAllDataAction(idToken: string) {
   return { success: true };
 }
 
-export async function syncScoresAction(idToken: string) {
+export async function syncScoresAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
-  const result = await syncEspnScores();
+  const result = await syncEspnScores(eventId);
   revalidatePath('/');
   revalidatePath('/greedy');
   return result;
 }
 
-export async function addParticipantAction(idToken: string, name: string, players: string[]) {
+export async function addParticipantAction(idToken: string, eventId: string, name: string, players: string[]) {
   await verifyAdmin(idToken);
+  await ensureEventExistsServer(eventId);
 
   if (!name.trim()) throw new Error('Participant name is required');
   if (!players || players.length === 0) throw new Error('Please enter at least one golfer');
 
-  const ref = adminDb.collection('usopen_participants').doc();
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const ref = eventRef.collection('participants').doc();
   await ref.set({
     name: name.trim(),
     players: players
@@ -128,41 +273,48 @@ export async function addParticipantAction(idToken: string, name: string, player
   return { success: true };
 }
 
-export async function deleteParticipantAction(idToken: string, id: string) {
+export async function deleteParticipantAction(idToken: string, eventId: string, id: string) {
   await verifyAdmin(idToken);
-  await adminDb.collection('usopen_participants').doc(id).delete();
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  await eventRef.collection('participants').doc(id).delete();
   revalidatePath('/');
   return { success: true };
 }
 
-export async function updateParticipantPlayersAction(idToken: string, id: string, players: string[]) {
+export async function updateParticipantPlayersAction(idToken: string, eventId: string, id: string, players: string[]) {
   await verifyAdmin(idToken);
-  await adminDb.collection('usopen_participants').doc(id).update({
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  await eventRef.collection('participants').doc(id).update({
     players: players
   });
   revalidatePath('/');
   return { success: true };
 }
 
-export async function updateCutlineAction(idToken: string, cutline: number | null) {
+export async function updateCutlineAction(idToken: string, eventId: string, cutline: number | null) {
   await verifyAdmin(idToken);
-  await adminDb.collection('usopen_config').doc('tournament').set({
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  await eventRef.update({
     cutline: cutline
-  }, { merge: true });
+  });
   revalidatePath('/');
   return { success: true };
 }
 
-export async function finalizePlayoffAction(idToken: string) {
+export async function finalizePlayoffAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
+  await ensureEventExistsServer(eventId);
 
-  const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
-    adminDb.collection('usopen_participants').get(),
-    adminDb.collection('usopen_playerScores').get(),
-    adminDb.collection('usopen_config').doc('tournament').get(),
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
+
+  const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
+    eventRef.collection('participants').get(),
+    eventRef.collection('playerScores').get(),
+    eventRef.get(),
   ]);
 
-  const cutline = configSnap.data()?.cutline ?? null;
+  const eventData = eventSnap.data();
+  const cutline = eventData?.cutline ?? null;
   
   const participants = participantsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Participant[];
   const scores: Record<string, PlayerScore> = {};
@@ -217,10 +369,10 @@ export async function finalizePlayoffAction(idToken: string) {
   const playerNamesArray = Array.from(playersToFetch);
 
   if (playerNamesArray.length > 0) {
-      const playoffData = await fetchRound4HolesForPlayers(playerNamesArray);
+      const playoffData = await fetchRound4HolesForPlayers(playerNamesArray, eventId);
       
       const batch = adminDb.batch();
-      const playoffCollection = adminDb.collection('usopen_playoffScores');
+      const playoffCollection = eventRef.collection('playoffScores');
 
       const existingDocs = await playoffCollection.get();
       existingDocs.docs.forEach(doc => {
@@ -239,7 +391,7 @@ export async function finalizePlayoffAction(idToken: string) {
       await batch.commit();
   }
 
-  await adminDb.collection('usopen_config').doc('tournament').update({
+  await eventRef.update({
       playoffComplete: true,
       lastUpdated: new Date()
   });
@@ -248,11 +400,13 @@ export async function finalizePlayoffAction(idToken: string) {
   return { success: true, fetchedPlayers: playerNamesArray };
 }
 
-export async function syncParticipantNamesAction(idToken: string) {
+export async function syncParticipantNamesAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
-  
+  await ensureEventExistsServer(eventId);
+
+  const eventRef = adminDb.collection('golf_events').doc(eventId);
   const batch = adminDb.batch();
-  const pSnap = await adminDb.collection('usopen_participants').get();
+  const pSnap = await eventRef.collection('participants').get();
   let count = 0;
   
   pSnap.docs.forEach((docSnap) => {

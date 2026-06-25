@@ -15,7 +15,8 @@ import {
   computeParticipantStandings, 
   getDayMoneyWinners 
 } from '@/lib/scoring';
-import { Participant, PlayerScore, PlayoffScore, PlayerRanking } from '@/types';
+import { Participant, PlayerScore, PlayoffScore, PlayerRanking, TournamentEvent } from '@/types';
+import { getActiveEventIdServer, ensureEventExistsServer } from '@/lib/events-server';
 
 // Force dynamic rendering so server fetches live data on each request
 export const dynamic = 'force-dynamic';
@@ -28,14 +29,20 @@ const formatScore = (score: number | null | undefined) => {
 
 /**
  * Public Dashboard Component
- * Renders live US Open 2026 Golf Draft standings on the server.
+ * Renders live golf draft standings on the server for the currently active event.
  */
 export default async function Dashboard() {
-  // 1. Fetch live tournament records directly on the secure server
-  const [participantsSnap, scoresSnap, configSnap] = await Promise.all([
-    adminDb.collection('usopen_participants').get(),
-    adminDb.collection('usopen_playerScores').get(),
-    adminDb.collection('usopen_config').doc('tournament').get(),
+  // 1. Determine active event ID and ensure it exists (running migration if necessary)
+  const activeEventId = await getActiveEventIdServer();
+  await ensureEventExistsServer(activeEventId);
+
+  const eventRef = adminDb.collection('golf_events').doc(activeEventId);
+
+  // Fetch live tournament records directly on the secure server
+  const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
+    eventRef.collection('participants').get(),
+    eventRef.collection('playerScores').get(),
+    eventRef.get(),
   ]);
 
   const participants = participantsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant));
@@ -46,15 +53,19 @@ export default async function Dashboard() {
     scores[data.playerName] = data;
   });
 
-  const configData = configSnap.data();
-  const cutline = configData?.cutline ?? null;
-  const playoffComplete = configData?.playoffComplete ?? false;
-  const lastUpdated = configData?.lastUpdated ? configData.lastUpdated.toDate() : null;
+  const eventData = eventSnap.data();
+  const eventName = eventData?.name || "US Open";
+  const eventSubtitle = eventData?.subtitle || "Draft Dashboard";
+  const cutline = eventData?.cutline ?? null;
+  const playoffComplete = eventData?.playoffComplete ?? false;
+  const lastUpdated = eventData?.lastUpdated ? eventData.lastUpdated.toDate() : null;
+  const startDate = eventData?.startDate || "";
+  const endDate = eventData?.endDate || "";
 
   // Only query playoff scores when the playoff is completed
   let playoffScores: Record<string, PlayoffScore> = {};
   if (playoffComplete) {
-    const playoffSnap = await adminDb.collection('usopen_playoffScores').get();
+    const playoffSnap = await eventRef.collection('playoffScores').get();
     playoffSnap.docs.forEach(d => {
       playoffScores[d.id] = d.data() as PlayoffScore;
     });
@@ -122,13 +133,13 @@ export default async function Dashboard() {
             </div>
             <div>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-serif">
-                US Open 2026
+                {eventName}
               </h1>
-              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-sm">Draft Dashboard</p>
+              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-sm">{eventSubtitle}</p>
             </div>
           </div>
           <div className="flex flex-col items-center md:items-end gap-4">
-            <Countdown />
+            <Countdown startDate={startDate} endDate={endDate} />
             <div className="text-center md:text-right bg-[#001A2E] p-3 rounded-lg border border-white/10 w-full">
               <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest mb-1">Scoring Last Updated</p>
               <p className="text-xl font-mono font-bold">
