@@ -10,9 +10,9 @@ runConfig:
 # Environment variables and secrets.
 env:
   # CRON_SECRET: Authorized secret for automated score updates via /api/sync.
-  # Use this value in your Cloud Scheduler URL: ?secret=usopen2026
+  # Use this value in your Cloud Scheduler URL: ?secret=theopen2026
   - variable: CRON_SECRET
-    value: usopen2026
+    value: theopen2026
     availability:
       - RUNTIME
 

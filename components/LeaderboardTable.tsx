@@ -26,9 +26,9 @@ interface LeaderboardTableProps {
 const getRankStyle = (rank: number | string): string => {
   switch (rank) {
     case 1:
-      return 'bg-[#FFD700] text-[#001A2E] font-black'; // Gold
+      return 'bg-[#FFD700] text-[#05041a] font-black'; // Gold
     case 2:
-      return 'bg-[#C0C0C0] text-[#001A2E] font-black'; // Silver
+      return 'bg-[#C0C0C0] text-[#05041a] font-black'; // Silver
     case 3:
       return 'bg-[#CD7F32] text-white font-black'; // Bronze
     case 4:
@@ -36,7 +36,7 @@ const getRankStyle = (rank: number | string): string => {
     case 'C':
       return 'bg-red-50 text-red-500 border border-red-100 font-black'; // Cut
     default:
-      return 'bg-[#F4F8FA] text-[#00365F]';
+      return 'bg-[#f8f9fa] text-[#06051e]';
   }
 };
 
@@ -54,40 +54,40 @@ export function LeaderboardTable({
   playoffComplete,
 }: LeaderboardTableProps) {
   return (
-    <section className={`bg-white rounded-2xl shadow-xl border border-[#00365F]/10 overflow-hidden ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
-      <div className="bg-[#00365F] text-white p-6 flex justify-between items-center">
+    <section className={`bg-white rounded-2xl shadow-xl border border-[#06051e]/10 overflow-hidden ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
+      <div className="bg-[#06051e] text-white p-6 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <TrendingDown className="w-6 h-6 text-[#D4AF37]" />
+          <TrendingDown className="w-6 h-6 text-[#ffba00]" />
           <h2 className="text-xl font-serif font-bold uppercase tracking-tight">Overall Standings</h2>
         </div>
-        <Badge className="bg-[#001A2E] text-white border border-white/20">Live Feed</Badge>
+        <Badge className="bg-[#05041a] text-white border border-white/20">Live Feed</Badge>
       </div>
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader className="bg-[#F4F8FA]">
-            <TableRow className="hover:bg-transparent border-b-2 border-[#00365F]/10">
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] w-16 text-center">Pos</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px]">Participant</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px]">Drafted Players</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R1</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R2</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R3</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-center">R4</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-right pr-8">Total</TableHead>
+          <TableHeader className="bg-[#f8f9fa]">
+            <TableRow className="hover:bg-transparent border-b-2 border-[#06051e]/10">
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] w-16 text-center">Pos</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px]">Participant</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px]">Drafted Players</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-center">R1</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-center">R2</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-center">R3</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-center">R4</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-right pr-8">Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {allStats.map((p) => (
               <TableRow 
                 key={p.id}
-                className="border-b border-[#00365F]/5 hover:bg-[#00365F]/5 transition-colors group"
+                className="border-b border-[#06051e]/5 hover:bg-[#06051e]/5 transition-colors group"
               >
                 <TableCell className="text-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto font-bold ${getRankStyle(p.rank)}`}>
                     {p.rank}
                   </div>
                 </TableCell>
-                <TableCell className="font-bold text-[#00365F] text-lg">
+                <TableCell className="font-bold text-[#06051e] text-lg">
                   <div className="flex items-center gap-2">
                     {p.name}
                   </div>
@@ -95,7 +95,7 @@ export function LeaderboardTable({
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     {p.players.map((player, index) => (
-                      <div key={player} className="text-[11px] flex justify-between gap-4 border-l-2 border-[#D4AF37] pl-2">
+                      <div key={player} className="text-[11px] flex justify-between gap-4 border-l-2 border-[#ffba00] pl-2">
                         <span className="font-medium">
                           {player}
                           {isPlayerCut(scores[player]) && (
@@ -104,7 +104,7 @@ export function LeaderboardTable({
                             </span>
                           )}
                         </span>
-                        <span className="font-mono text-[#00365F] font-bold">
+                        <span className="font-mono text-[#06051e] font-bold">
                           {scores[player] ? (
                             `${index >= 3 ? '-' : formatScore(scores[player].day1)}/${index >= 3 ? '-' : formatScore(scores[player].day2)}/${isPlayerCut(scores[player]) ? 'C' : formatScore(scores[player].day3)}/${isPlayerCut(scores[player]) ? 'C' : formatScore(scores[player].day4)}`
                           ) : 'E/E/E/E'}
@@ -117,7 +117,7 @@ export function LeaderboardTable({
                 <TableCell className="text-center font-medium">{formatScore(p.stats.d2)}</TableCell>
                 <TableCell className="text-center font-medium">{formatScore(p.stats.d3)}</TableCell>
                 <TableCell className="text-center font-medium">{formatScore(p.stats.d4)}</TableCell>
-                <TableCell className="text-right font-bold text-2xl text-[#00365F] pr-8">{formatScore(p.stats.total)}</TableCell>
+                <TableCell className="text-right font-bold text-2xl text-[#06051e] pr-8">{formatScore(p.stats.total)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

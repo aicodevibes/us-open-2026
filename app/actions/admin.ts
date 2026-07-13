@@ -43,7 +43,7 @@ export async function createEventAction(
   if (!name.trim()) throw new Error('Event name is required');
   if (!espnEventId.trim()) throw new Error('ESPN Event ID is required');
 
-  const eventRef = adminDb.collection('golf_events').doc();
+  const eventRef = adminDb.collection('theopen_events').doc();
   const eventId = eventRef.id;
 
   const eventData = {
@@ -60,7 +60,7 @@ export async function createEventAction(
   await eventRef.set(eventData);
 
   if (makeActive) {
-    await adminDb.collection('golf_config').doc('activeEvent').set({
+    await adminDb.collection('theopen_config').doc('activeEvent').set({
       activeEventId: eventId
     }, { merge: true });
   }
@@ -86,7 +86,7 @@ export async function updateEventAction(
   if (!name.trim()) throw new Error('Event name is required');
   if (!espnEventId.trim()) throw new Error('ESPN Event ID is required');
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   await eventRef.update({
     name: name.trim(),
     subtitle: subtitle.trim(),
@@ -97,7 +97,7 @@ export async function updateEventAction(
   });
 
   if (makeActive) {
-    await adminDb.collection('golf_config').doc('activeEvent').set({
+    await adminDb.collection('theopen_config').doc('activeEvent').set({
       activeEventId: eventId
     }, { merge: true });
   }
@@ -112,7 +112,7 @@ export async function deleteEventAction(idToken: string, eventId: string) {
 
   if (!eventId) throw new Error('Event ID is required');
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const batch = adminDb.batch();
 
   // Cascade delete subcollections
@@ -126,9 +126,9 @@ export async function deleteEventAction(idToken: string, eventId: string) {
   await batch.commit();
 
   // Reset active event config if active event was deleted
-  const activeDoc = await adminDb.collection('golf_config').doc('activeEvent').get();
+  const activeDoc = await adminDb.collection('theopen_config').doc('activeEvent').get();
   if (activeDoc.exists && activeDoc.data()?.activeEventId === eventId) {
-    await adminDb.collection('golf_config').doc('activeEvent').set({
+    await adminDb.collection('theopen_config').doc('activeEvent').set({
       activeEventId: ''
     }, { merge: true });
   }
@@ -143,7 +143,7 @@ export async function setActiveEventAction(idToken: string, eventId: string) {
 
   if (!eventId) throw new Error('Event ID is required');
 
-  await adminDb.collection('golf_config').doc('activeEvent').set({
+  await adminDb.collection('theopen_config').doc('activeEvent').set({
     activeEventId: eventId
   }, { merge: true });
 
@@ -161,7 +161,7 @@ export async function seedParticipantsAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
   await ensureEventExistsServer(eventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const batch = adminDb.batch();
 
   // 1. Clear existing participants in this event
@@ -197,7 +197,7 @@ export async function seedGreedyParticipantsAction(idToken: string, eventId: str
   await verifyAdmin(idToken);
   await ensureEventExistsServer(eventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const batch = adminDb.batch();
 
   // 1. Clear existing greedy participants in this event
@@ -219,7 +219,7 @@ export async function clearAllDataAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
   await ensureEventExistsServer(eventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const batch = adminDb.batch();
   
   const subcollections = [
@@ -262,7 +262,7 @@ export async function addParticipantAction(idToken: string, eventId: string, nam
   if (!name.trim()) throw new Error('Participant name is required');
   if (!players || players.length === 0) throw new Error('Please enter at least one golfer');
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const ref = eventRef.collection('participants').doc();
   await ref.set({
     name: name.trim(),
@@ -275,7 +275,7 @@ export async function addParticipantAction(idToken: string, eventId: string, nam
 
 export async function deleteParticipantAction(idToken: string, eventId: string, id: string) {
   await verifyAdmin(idToken);
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   await eventRef.collection('participants').doc(id).delete();
   revalidatePath('/');
   return { success: true };
@@ -283,7 +283,7 @@ export async function deleteParticipantAction(idToken: string, eventId: string, 
 
 export async function updateParticipantPlayersAction(idToken: string, eventId: string, id: string, players: string[]) {
   await verifyAdmin(idToken);
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   await eventRef.collection('participants').doc(id).update({
     players: players
   });
@@ -293,7 +293,7 @@ export async function updateParticipantPlayersAction(idToken: string, eventId: s
 
 export async function updateCutlineAction(idToken: string, eventId: string, cutline: number | null) {
   await verifyAdmin(idToken);
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   await eventRef.update({
     cutline: cutline
   });
@@ -305,7 +305,7 @@ export async function finalizePlayoffAction(idToken: string, eventId: string) {
   await verifyAdmin(idToken);
   await ensureEventExistsServer(eventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
 
   const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
     eventRef.collection('participants').get(),
@@ -404,7 +404,7 @@ export async function syncParticipantNamesAction(idToken: string, eventId: strin
   await verifyAdmin(idToken);
   await ensureEventExistsServer(eventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const batch = adminDb.batch();
   const pSnap = await eventRef.collection('participants').get();
   let count = 0;

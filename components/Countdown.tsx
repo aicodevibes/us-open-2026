@@ -78,7 +78,7 @@ export function Countdown({ startDate = TOURNAMENT_START_DATE, endDate = TOURNAM
 
   if (isCompleted) {
     return (
-      <div className="bg-[#001A2E] text-[#D4AF37] border border-[#D4AF37]/50 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2">
+      <div className="bg-[#05041a] text-[#ffba00] border border-[#ffba00]/50 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2">
         <Trophy className="w-4 h-4" />
         TOURNAMENT COMPLETED
       </div>
@@ -87,8 +87,8 @@ export function Countdown({ startDate = TOURNAMENT_START_DATE, endDate = TOURNAM
 
   if (hasStarted) {
     return (
-      <div className="bg-[#D4AF37] text-[#001A2E] px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 animate-pulse">
-        <div className="w-2 h-2 bg-[#00365F] rounded-full" />
+      <div className="bg-[#ffba00] text-[#05041a] px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 animate-pulse">
+        <div className="w-2 h-2 bg-[#06051e] rounded-full" />
         TOURNAMENT IN PROGRESS
       </div>
     );
@@ -97,8 +97,8 @@ export function Countdown({ startDate = TOURNAMENT_START_DATE, endDate = TOURNAM
   if (!timeLeft) return null;
 
   return (
-    <div className="flex items-center gap-4 bg-[#001A2E] p-3 rounded-lg border border-white/20">
-      <Timer className="w-5 h-5 text-[#D4AF37]" />
+    <div className="flex items-center gap-4 bg-[#05041a] p-3 rounded-lg border border-white/20">
+      <Timer className="w-5 h-5 text-[#ffba00]" />
       <div className="flex gap-3 text-white font-mono">
         <div className="text-center">
           <span className="block text-lg font-bold">{timeLeft.days}</span>

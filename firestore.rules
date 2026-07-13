@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===============================================================
-    // Assumed Data Model (Golf Events prefix)
+    // Assumed Data Model (The Open Events prefix)
     // ===============================================================
 
     // Helper Functions
@@ -14,12 +14,12 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.email_verified == true) &&
-        exists(/databases/$(database)/documents/usopen_users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/usopen_users/$(request.auth.uid)).data.role == 'admin';
+        exists(/databases/$(database)/documents/theopen_users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/theopen_users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Golf Events & Subcollections: Anyone can read, only admin can write
-    match /golf_events/{eventId} {
+    match /theopen_events/{eventId} {
       allow read: if true;
       allow write: if isAdmin();
 
@@ -45,47 +45,41 @@ service cloud.firestore {
     }
 
     // Golf Config: Anyone can read, only admin can write
-    match /golf_config/{configId} {
+    match /theopen_config/{configId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // ===============================================================
-    // Legacy Rules (for fallback / compatibility)
+    // Legacy Rules (for fallback / compatibility - updated to theopen_)
     // ===============================================================
 
     // Participants: Anyone can read, only admin can write
-    match /usopen_participants/{participantId} {
+    match /theopen_participants/{participantId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     // Greedy Participants: Anyone can read, only admin can write
-    match /usopen_greedyParticipants/{participantId} {
+    match /theopen_greedyParticipants/{participantId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     // PlayerScores: Anyone can read, only admin can write
-    match /usopen_playerScores/{playerName} {
+    match /theopen_playerScores/{playerName} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // PlayoffScores: Anyone can read, only admin can write
-    match /usopen_playoffScores/{playerName} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Config: Anyone can read, only admin can write
-    match /usopen_config/{configId} {
+    match /theopen_playoffScores/{playerName} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // User profiles (for RBAC)
-    match /usopen_users/{userId} {
+    match /theopen_users/{userId} {
       allow read: if isAuthenticated() && request.auth.uid == userId;
       allow write: if isAdmin();
     }

@@ -24,7 +24,7 @@ export default async function GreedyPage() {
   const activeEventId = await getActiveEventIdServer();
   await ensureEventExistsServer(activeEventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(activeEventId);
+  const eventRef = adminDb.collection('theopen_events').doc(activeEventId);
 
   const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
     eventRef.collection('greedyParticipants').get(),
@@ -74,33 +74,33 @@ export default async function GreedyPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F4F8FA] text-[#001A2E] p-4 md:p-8 font-sans">
+    <main className="min-h-screen bg-[#f8f9fa] text-[#05041a] p-4 md:p-8 font-sans">
       {/* Poll and refresh server component data every 60 seconds */}
       <RefreshTimer intervalMs={60000} />
 
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <header className="bg-[#00365F] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#D4AF37]">
+        <header className="bg-[#06051e] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#ffba00]">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-[#D4AF37] rounded-full flex items-center justify-center p-2">
-              <DollarSign className="w-10 h-10 text-[#00365F]" />
+            <div className="w-16 h-16 bg-[#ffba00] rounded-full flex items-center justify-center p-2">
+              <DollarSign className="w-10 h-10 text-[#06051e]" />
             </div>
             <div>
               <h1 className="text-3xl md:text-5xl font-bold tracking-tighter uppercase font-serif">
                 The Greedy Side Game
               </h1>
-              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-xs">{eventName}</p>
+              <p className="text-[#ffba00] font-bold tracking-widest uppercase text-xs">{eventName}</p>
             </div>
           </div>
-          <div className="text-center md:text-right bg-[#001A2E] p-3 rounded-lg border border-white/10 shrink-0">
-            <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest mb-1">Winner Takes All</p>
+          <div className="text-center md:text-right bg-[#05041a] p-3 rounded-lg border border-white/10 shrink-0">
+            <p className="text-[10px] text-[#ffba00] uppercase tracking-widest mb-1">Winner Takes All</p>
             <p className="text-3xl font-mono font-black text-white">{GREEDY_PRIZE_POOL}</p>
           </div>
         </header>
 
         {/* Leaderboard */}
-        <section className="bg-white rounded-2xl shadow-xl border border-[#00365F]/10 overflow-hidden">
-          <div className="bg-[#001A2E] text-white p-4 flex justify-between items-center border-b-2 border-[#D4AF37]">
+        <section className="bg-white rounded-2xl shadow-xl border border-[#06051e]/10 overflow-hidden">
+          <div className="bg-[#05041a] text-white p-4 flex justify-between items-center border-b-2 border-[#ffba00]">
             <h2 className="text-lg font-serif font-bold uppercase tracking-widest">Scoreboard</h2>
             <div className="flex items-center gap-2 text-[10px] uppercase opacity-60">
               <Timer className="w-3 h-3" />
@@ -109,26 +109,26 @@ export default async function GreedyPage() {
           </div>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-[#F4F8FA]">
-                <TableRow className="hover:bg-transparent border-b-2 border-[#00365F]/10">
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px]">Participant</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px]">Assigned Player</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px] text-center">R1</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px] text-center">R2</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px] text-center">R3</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px] text-center">R4</TableHead>
-                  <TableHead className="text-[#00365F] font-bold uppercase text-[11px] text-right pr-6">Total</TableHead>
+              <TableHeader className="bg-[#f8f9fa]">
+                <TableRow className="hover:bg-transparent border-b-2 border-[#06051e]/10">
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px]">Participant</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px]">Assigned Player</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px] text-center">R1</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px] text-center">R2</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px] text-center">R3</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px] text-center">R4</TableHead>
+                  <TableHead className="text-[#06051e] font-bold uppercase text-[11px] text-right pr-6">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {allStats.map((p, idx) => (
                   <TableRow 
                     key={p.id}
-                    className={`border-b border-[#00365F]/5 hover:bg-[#00365F]/5 transition-colors ${isOutrightLeader(idx) ? 'bg-[#D4AF37]/5' : ''}`}
+                    className={`border-b border-[#06051e]/5 hover:bg-[#06051e]/5 transition-colors ${isOutrightLeader(idx) ? 'bg-[#ffba00]/5' : ''}`}
                   >
-                    <TableCell className="font-bold text-[#00365F]">
+                    <TableCell className="font-bold text-[#06051e]">
                       <div className="flex items-center gap-2">
-                        {isOutrightLeader(idx) && <Trophy className="w-4 h-4 text-[#D4AF37]" />}
+                        {isOutrightLeader(idx) && <Trophy className="w-4 h-4 text-[#ffba00]" />}
                         {p.name}
                       </div>
                     </TableCell>
@@ -140,7 +140,7 @@ export default async function GreedyPage() {
                     <TableCell className="text-center font-mono text-xs">{formatScore(p.stats.d2)}</TableCell>
                     <TableCell className="text-center font-mono text-xs">{formatScore(p.stats.d3)}</TableCell>
                     <TableCell className="text-center font-mono text-xs">{formatScore(p.stats.d4)}</TableCell>
-                    <TableCell className="text-right font-bold text-xl text-[#00365F] pr-6">
+                    <TableCell className="text-right font-bold text-xl text-[#06051e] pr-6">
                       {formatScore(p.stats.total)}
                     </TableCell>
                   </TableRow>

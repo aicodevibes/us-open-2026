@@ -2,15 +2,15 @@
 
 // 1. ESPN Golf Tournament API Event ID
 // Find the 9-digit Event ID in ESPN's URL or API.
-export const ESPN_EVENT_ID = process.env.NEXT_PUBLIC_ESPN_EVENT_ID || "401811952";
+export const ESPN_EVENT_ID = process.env.NEXT_PUBLIC_ESPN_EVENT_ID || "401811957";
 
 // 2. Tournament Details
-export const TOURNAMENT_NAME = "US Open 2026";
+export const TOURNAMENT_NAME = "The Open 2026";
 export const TOURNAMENT_SUBTITLE = "Draft Dashboard";
 
 // Dates (ISO 8601 Format / UTC) for the Countdown Clock
-export const TOURNAMENT_START_DATE = "2026-06-18T12:00:00Z"; // Thursday 8:00 AM EDT (June 18, 2026)
-export const TOURNAMENT_END_DATE = "2026-06-21T22:00:00Z";   // Sunday evening conclusion (June 21, 2026)
+export const TOURNAMENT_START_DATE = "2026-07-16T05:35:00Z"; // Thursday 6:35 AM BST (July 16, 2026)
+export const TOURNAMENT_END_DATE = "2026-07-19T22:00:00Z";   // Sunday evening conclusion (July 19, 2026)
 
 // 3. Prizes & Pools (Main Tournament)
 export const PRIZES = [

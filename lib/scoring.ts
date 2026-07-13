@@ -56,11 +56,13 @@ export function calculateDailyScore(
   // Sort and take lowest 2
   const sorted = [...playerScores].sort((a, b) => a - b);
   
+  if (sorted.length === 0) return 0;
+
   const s1 = sorted[0];
   const s2 = sorted[1];
 
   if (s1 === 999) return 0; // No active players
-  if (s2 === 999) return s1; // Only 1 active player
+  if (s2 === undefined || s2 === 999) return s1 === 999 ? 0 : s1; // Only 1 active player
   
   return s1 + s2;
 }

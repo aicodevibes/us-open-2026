@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const targetEventId = eventId || await getActiveEventIdServer();
     await ensureEventExistsServer(targetEventId);
 
-    const eventRef = adminDb.collection('golf_events').doc(targetEventId);
+    const eventRef = adminDb.collection('theopen_events').doc(targetEventId);
     const batch = adminDb.batch();
 
     // 1. Clear existing participants in this event

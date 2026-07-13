@@ -89,7 +89,7 @@ export async function fetchRound4HolesForPlayers(playerNames: string[], eventId?
     const finalEventId = eventId || await getActiveEventIdServer();
     await ensureEventExistsServer(finalEventId);
 
-    const eventRef = adminDb.collection('golf_events').doc(finalEventId);
+    const eventRef = adminDb.collection('theopen_events').doc(finalEventId);
     const eventSnap = await eventRef.get();
     const eventData = eventSnap.data();
     const espnId = eventData?.espnEventId || finalEventId;
@@ -145,7 +145,7 @@ export async function fetchRound4HolesForPlayers(playerNames: string[], eventId?
 }
 
 /**
- * Fetches scores from ESPN and syncs them to Firestore golf_events/{eventId}/playerScores.
+ * Fetches scores from ESPN and syncs them to Firestore theopen_events/{eventId}/playerScores.
  * Updates config timestamp lastUpdated.
  */
 export async function syncEspnScores(eventId?: string): Promise<{ success: boolean; message?: string; updatedCount?: number }> {
@@ -153,7 +153,7 @@ export async function syncEspnScores(eventId?: string): Promise<{ success: boole
     const finalEventId = eventId || await getActiveEventIdServer();
     await ensureEventExistsServer(finalEventId);
 
-    const eventRef = adminDb.collection('golf_events').doc(finalEventId);
+    const eventRef = adminDb.collection('theopen_events').doc(finalEventId);
     const eventSnap = await eventRef.get();
     const eventData = eventSnap.data();
     const espnId = eventData?.espnEventId || finalEventId;

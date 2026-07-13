@@ -36,7 +36,7 @@ export default async function Dashboard() {
   const activeEventId = await getActiveEventIdServer();
   await ensureEventExistsServer(activeEventId);
 
-  const eventRef = adminDb.collection('golf_events').doc(activeEventId);
+  const eventRef = adminDb.collection('theopen_events').doc(activeEventId);
 
   // Fetch live tournament records directly on the secure server
   const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
@@ -120,28 +120,28 @@ export default async function Dashboard() {
   );
 
   return (
-    <main className="min-h-screen bg-[#F4F8FA] text-[#001A2E] p-4 md:p-8 font-sans">
+    <main className="min-h-screen bg-[#f8f9fa] text-[#05041a] p-4 md:p-8 font-sans">
       {/* Poll and refresh server components every 60 seconds */}
       <RefreshTimer intervalMs={60000} />
 
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <header className="bg-[#00365F] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#D4AF37]">
+        <header className="bg-[#06051e] text-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-b-4 border-[#ffba00]">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center p-2 shadow-inner">
-              <Trophy className="w-12 h-12 text-[#00365F]" />
+              <Trophy className="w-12 h-12 text-[#06051e]" />
             </div>
             <div>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-serif">
                 {eventName}
               </h1>
-              <p className="text-[#D4AF37] font-bold tracking-widest uppercase text-sm">{eventSubtitle}</p>
+              <p className="text-[#ffba00] font-bold tracking-widest uppercase text-sm">{eventSubtitle}</p>
             </div>
           </div>
           <div className="flex flex-col items-center md:items-end gap-4">
             <Countdown startDate={startDate} endDate={endDate} />
-            <div className="text-center md:text-right bg-[#001A2E] p-3 rounded-lg border border-white/10 w-full">
-              <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest mb-1">Scoring Last Updated</p>
+            <div className="text-center md:text-right bg-[#05041a] p-3 rounded-lg border border-white/10 w-full">
+              <p className="text-[10px] text-[#ffba00] uppercase tracking-widest mb-1">Scoring Last Updated</p>
               <p className="text-xl font-mono font-bold">
                 {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Waiting...'}
               </p>
@@ -163,29 +163,29 @@ export default async function Dashboard() {
             {/* Day Money Winners — shown under Final Standings */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <DollarSign className="w-5 h-5 text-[#D4AF37]" />
-                <h2 className="text-lg font-serif font-bold uppercase tracking-widest text-[#00365F]">Day Money Winners</h2>
+                <DollarSign className="w-5 h-5 text-[#ffba00]" />
+                <h2 className="text-lg font-serif font-bold uppercase tracking-widest text-[#06051e]">Day Money Winners</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map(day => {
                   const winners = getDayMoneyWinners(participants, scores, day, cutline, allStats);
                   return (
-                    <Card key={day} className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
-                      <CardHeader className="p-4 bg-[#00365F] text-white">
+                    <Card key={day} className="bg-white border-2 border-[#06051e]/10 rounded-xl shadow-sm overflow-hidden">
+                      <CardHeader className="p-4 bg-[#06051e] text-white">
                         <CardTitle className="text-xs uppercase tracking-widest flex items-center justify-between">
                           Day {day} Money
-                          <DollarSign className="w-3 h-3 text-[#D4AF37]" />
+                          <DollarSign className="w-3 h-3 text-[#ffba00]" />
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-4">
                         {winners.length > 0 ? (
                           <div className="space-y-2">
                             {winners.map(w => (
-                              <div key={w.id} className="flex justify-between items-center p-2 bg-[#F4F8FA] rounded border border-[#00365F]/5">
-                                <span className="font-bold text-[#00365F]">{w.name}</span>
+                              <div key={w.id} className="flex justify-between items-center p-2 bg-[#f8f9fa] rounded border border-[#06051e]/5">
+                                <span className="font-bold text-[#06051e]">{w.name}</span>
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-black text-emerald-600">${(75 / winners.length).toFixed(2)}</span>
-                                  <Badge className="bg-[#D4AF37] text-[#001A2E] hover:bg-[#D4AF37]">
+                                  <Badge className="bg-[#ffba00] text-[#05041a] hover:bg-[#ffba00]">
                                     {formatScore(w.dayBestScore)}
                                   </Badge>
                                 </div>
@@ -219,22 +219,22 @@ export default async function Dashboard() {
             {[1, 2, 3, 4].map(day => {
               const winners = getDayMoneyWinners(participants, scores, day, cutline, allStats);
               return (
-                <Card key={day} className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
-                  <CardHeader className="p-4 bg-[#00365F] text-white">
+                <Card key={day} className="bg-white border-2 border-[#06051e]/10 rounded-xl shadow-sm overflow-hidden">
+                  <CardHeader className="p-4 bg-[#06051e] text-white">
                     <CardTitle className="text-xs uppercase tracking-widest flex items-center justify-between">
                       Day {day} Money
-                      <DollarSign className="w-3 h-3 text-[#D4AF37]" />
+                      <DollarSign className="w-3 h-3 text-[#ffba00]" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">
                     {winners.length > 0 ? (
                       <div className="space-y-2">
                         {winners.map(w => (
-                          <div key={w.id} className="flex justify-between items-center p-2 bg-[#F4F8FA] rounded border border-[#00365F]/5">
-                            <span className="font-bold text-[#00365F]">{w.name}</span>
+                          <div key={w.id} className="flex justify-between items-center p-2 bg-[#f8f9fa] rounded border border-[#06051e]/5">
+                            <span className="font-bold text-[#06051e]">{w.name}</span>
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-black text-emerald-600">${(75 / winners.length).toFixed(2)}</span>
-                              <Badge className="bg-[#D4AF37] text-[#001A2E] hover:bg-[#D4AF37]">
+                              <Badge className="bg-[#ffba00] text-[#05041a] hover:bg-[#ffba00]">
                                 {formatScore(w.dayBestScore)}
                               </Badge>
                             </div>
@@ -262,27 +262,27 @@ export default async function Dashboard() {
 
         {/* Prize Money Section */}
         <section className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${playoffComplete ? 'opacity-50 grayscale transition-all duration-1000' : ''}`}>
-          <Card className="bg-white border-2 border-[#00365F]/10 rounded-xl shadow-sm overflow-hidden">
-            <CardHeader className="p-4 bg-[#00365F] text-white">
+          <Card className="bg-white border-2 border-[#06051e]/10 rounded-xl shadow-sm overflow-hidden">
+            <CardHeader className="p-4 bg-[#06051e] text-white">
               <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-[#D4AF37]" />
+                <Wallet className="w-4 h-4 text-[#ffba00]" />
                 Tournament Prize Pool
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {PRIZES.map((p) => (
-                  <div key={p.rank} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#00365F]/5">
-                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{p.rank}</p>
-                    <p className="text-lg font-serif font-bold text-[#001A2E]">{p.amount}</p>
+                  <div key={p.rank} className="text-center p-3 bg-[#f8f9fa] rounded-lg border border-[#06051e]/5">
+                    <p className="text-[10px] uppercase text-[#06051e] font-bold mb-1">{p.rank}</p>
+                    <p className="text-lg font-serif font-bold text-[#05041a]">{p.amount}</p>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-2 border-[#D4AF37]/30 rounded-xl shadow-sm overflow-hidden">
-            <CardHeader className="p-4 bg-[#D4AF37] text-[#001A2E]">
+          <Card className="bg-white border-2 border-[#ffba00]/30 rounded-xl shadow-sm overflow-hidden">
+            <CardHeader className="p-4 bg-[#ffba00] text-[#05041a]">
               <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
                 Daily Bonus Pool
@@ -291,9 +291,9 @@ export default async function Dashboard() {
             <CardContent className="p-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {DAILY_BONUSES.map((b) => (
-                  <div key={b.day} className="text-center p-3 bg-[#F4F8FA] rounded-lg border border-[#D4AF37]/10">
-                    <p className="text-[10px] uppercase text-[#00365F] font-bold mb-1">{b.day}</p>
-                    <p className="text-lg font-serif font-bold text-[#001A2E]">{b.amount}</p>
+                  <div key={b.day} className="text-center p-3 bg-[#f8f9fa] rounded-lg border border-[#ffba00]/10">
+                    <p className="text-[10px] uppercase text-[#06051e] font-bold mb-1">{b.day}</p>
+                    <p className="text-lg font-serif font-bold text-[#05041a]">{b.amount}</p>
                   </div>
                 ))}
               </div>

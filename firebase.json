@@ -4,7 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "apphosting": {
-    "backendId": "us-open-2026",
+    "backendId": "the-open-2026",
     "rootDir": "/",
     "ignore": [
       "node_modules",

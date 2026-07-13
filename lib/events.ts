@@ -13,7 +13,7 @@ import { ESPN_EVENT_ID } from './constants';
  */
 export async function getActiveEventIdClient(): Promise<string> {
   try {
-    const activeDocRef = doc(db, 'golf_config', 'activeEvent');
+    const activeDocRef = doc(db, 'theopen_config', 'activeEvent');
     const activeDocSnap = await getDoc(activeDocRef);
     if (activeDocSnap.exists()) {
       const data = activeDocSnap.data();
@@ -28,10 +28,10 @@ export async function getActiveEventIdClient(): Promise<string> {
 }
 
 /**
- * CLIENT SIDE: Fetch all events in golf_events.
+ * CLIENT SIDE: Fetch all events in theopen_events.
  */
 export async function getAllEventsClient(): Promise<TournamentEvent[]> {
-  const snap = await getDocs(collection(db, 'golf_events'));
+  const snap = await getDocs(collection(db, 'theopen_events'));
   return snap.docs.map((docSnap) => {
     const data = docSnap.data();
     return {

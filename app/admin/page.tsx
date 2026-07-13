@@ -141,7 +141,7 @@ export default function AdminPage() {
    */
   const loadEventSubcollections = useCallback(async (eventId: string) => {
     try {
-      const eventRef = doc(db, 'golf_events', eventId);
+      const eventRef = doc(db, 'theopen_events', eventId);
 
       const pSnap = await getDocs(collection(eventRef, 'participants'));
       setParticipants(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; players: string[] })));
@@ -524,14 +524,14 @@ export default function AdminPage() {
 
   if (!user || !isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F8FA]">
-        <Card className="w-full max-w-md border-2 border-[#00365F]">
-          <CardHeader className="bg-[#00365F] text-white">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#f8f9fa]">
+        <Card className="w-full max-w-md border-2 border-[#06051e]">
+          <CardHeader className="bg-[#06051e] text-white">
             <CardTitle>Admin Access Required</CardTitle>
             <CardDescription className="text-white/80">Only authorized admins can manage these drafts.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <Button onClick={handleLogin} className="w-full bg-[#00365F] hover:bg-[#001A2E]">Login with Google</Button>
+            <Button onClick={handleLogin} className="w-full bg-[#06051e] hover:bg-[#05041a]">Login with Google</Button>
             {user && !isAdmin && (
               <p className="text-destructive text-sm mt-4 text-center font-bold">
                 Access Denied: {user.email} is not authorized.
@@ -547,41 +547,41 @@ export default function AdminPage() {
 
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-8 min-h-screen pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-[#00365F] pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-[#06051e] pb-4 gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-[#00365F] p-2 rounded-lg">
-            <Database className="w-6 h-6 text-[#D4AF37]" />
+          <div className="bg-[#06051e] p-2 rounded-lg">
+            <Database className="w-6 h-6 text-[#ffba00]" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-[#00365F] font-serif uppercase">Tournament Control</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-[#06051e] font-serif uppercase">Tournament Control</h1>
             <p className="text-xs text-muted-foreground">Manage multi-event tournaments and ESPN drafts</p>
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={logout} className="border-[#00365F] text-[#00365F] hover:bg-[#00365F] hover:text-white ml-auto sm:ml-0">Logout</Button>
+          <Button variant="outline" onClick={logout} className="border-[#06051e] text-[#06051e] hover:bg-[#06051e] hover:text-white ml-auto sm:ml-0">Logout</Button>
         </div>
       </div>
 
       {/* 1. Event Selection & Event Details Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="border-2 border-[#00365F] lg:col-span-2 shadow-sm">
-          <CardHeader className="bg-[#00365F] text-white flex flex-row items-center justify-between space-y-0">
+        <Card className="border-2 border-[#06051e] lg:col-span-2 shadow-sm">
+          <CardHeader className="bg-[#06051e] text-white flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-lg">Event Selector & Configuration</CardTitle>
               <CardDescription className="text-white/70">Create, switch, or modify draft events</CardDescription>
             </div>
-            <Button onClick={() => setShowCreateDialog(true)} size="sm" className="bg-[#D4AF37] text-[#001A2E] hover:bg-[#b08e2d] font-bold">
+            <Button onClick={() => setShowCreateDialog(true)} size="sm" className="bg-[#ffba00] text-[#05041a] hover:bg-[#e0a400] font-bold">
               <Plus className="w-4 h-4 mr-1" />
               New Event
             </Button>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#00365F]">Select Event to Manage</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#06051e]">Select Event to Manage</label>
               <select
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
-                className="w-full p-2 border border-[#00365F]/20 rounded-md font-sans text-sm font-bold bg-white text-[#001A2E]"
+                className="w-full p-2 border border-[#06051e]/20 rounded-md font-sans text-sm font-bold bg-white text-[#05041a]"
               >
                 {events.map((evt) => (
                   <option key={evt.id} value={evt.id}>
@@ -592,7 +592,7 @@ export default function AdminPage() {
             </div>
 
             {selectedEvent && (
-              <div className="border-t border-[#00365F]/10 pt-4 space-y-4">
+              <div className="border-t border-[#06051e]/10 pt-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Event Name</label>
@@ -631,8 +631,8 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-[#00365F]/5">
-                  <Button onClick={handleUpdateEvent} className="bg-[#00365F] hover:bg-[#001A2E] text-white">
+                <div className="flex gap-2 pt-2 border-t border-[#06051e]/5">
+                  <Button onClick={handleUpdateEvent} className="bg-[#06051e] hover:bg-[#05041a] text-white">
                     Save Event Details
                   </Button>
                   <Button onClick={handleDeleteEvent} variant="destructive" className="ml-auto">
@@ -646,10 +646,10 @@ export default function AdminPage() {
         </Card>
 
         {/* 2. ESPN Tournaments Schedule / Upcoming events */}
-        <Card className="border-2 border-[#D4AF37]/40 shadow-sm bg-[#FBF9F2]">
-          <CardHeader className="bg-[#D4AF37]/10 pb-4">
-            <CardTitle className="text-sm uppercase tracking-wider flex items-center gap-2 text-[#001A2E]">
-              <Calendar className="w-4 h-4 text-[#D4AF37]" />
+        <Card className="border-2 border-[#ffba00]/40 shadow-sm bg-[#FBF9F2]">
+          <CardHeader className="bg-[#ffba00]/10 pb-4">
+            <CardTitle className="text-sm uppercase tracking-wider flex items-center gap-2 text-[#05041a]">
+              <Calendar className="w-4 h-4 text-[#ffba00]" />
               Suggested Tournaments
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">PGA calendar loaded live from ESPN</CardDescription>
@@ -657,7 +657,7 @@ export default function AdminPage() {
           <CardContent className="p-3">
             {fetchingUpcoming ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-[#00365F]" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#06051e]" />
               </div>
             ) : upcomingEvents.length > 0 ? (
               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
@@ -666,11 +666,11 @@ export default function AdminPage() {
                   const isItemActive = events.some(e => e.espnEventId === item.id && e.id === activeEventId);
                   
                   return (
-                    <div key={item.id} className="p-2 rounded bg-white border border-[#D4AF37]/25 flex flex-col justify-between gap-2 shadow-xs">
+                    <div key={item.id} className="p-2 rounded bg-white border border-[#ffba00]/25 flex flex-col justify-between gap-2 shadow-xs">
                       <div>
-                        <h4 className="text-xs font-bold text-[#00365F] line-clamp-1">{item.label}</h4>
+                        <h4 className="text-xs font-bold text-[#06051e] line-clamp-1">{item.label}</h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] bg-[#001A2E]/5 px-1.5 py-0.5 rounded text-muted-foreground font-mono">
+                          <span className="text-[10px] bg-[#05041a]/5 px-1.5 py-0.5 rounded text-muted-foreground font-mono">
                             ID: {item.id}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
@@ -687,7 +687,7 @@ export default function AdminPage() {
                           <Button 
                             onClick={() => handleCreateUpcomingEvent(item)} 
                             size="sm" 
-                            className="w-full bg-[#D4AF37] hover:bg-[#b08e2d] text-[#001A2E] text-[10px] font-bold py-1 h-7"
+                            className="w-full bg-[#ffba00] hover:bg-[#e0a400] text-[#05041a] text-[10px] font-bold py-1 h-7"
                           >
                             Import & Set Active
                           </Button>
@@ -708,9 +708,9 @@ export default function AdminPage() {
         <>
           {/* 3. Main Data Management & Sync Controls */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-2 border-[#00365F]/10 shadow-xs">
-              <CardHeader className="bg-[#F4F8FA]">
-                <CardTitle className="flex items-center gap-2 text-[#00365F] text-md">
+            <Card className="border-2 border-[#06051e]/10 shadow-xs">
+              <CardHeader className="bg-[#f8f9fa]">
+                <CardTitle className="flex items-center gap-2 text-[#06051e] text-md">
                   <Database className="w-5 h-5" />
                   Roster & Seeding Controls
                 </CardTitle>
@@ -720,15 +720,15 @@ export default function AdminPage() {
                   Seeding loads initial drafted rosters into the database for the selected event.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={seedParticipants} className="bg-[#00365F] hover:bg-[#001A2E]">
+                  <Button onClick={seedParticipants} className="bg-[#06051e] hover:bg-[#05041a]">
                     <UserPlus className="w-4 h-4 mr-2" />
                     Seed Drafted Rosters
                   </Button>
-                  <Button onClick={seedGreedyParticipants} variant="outline" className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white">
+                  <Button onClick={seedGreedyParticipants} variant="outline" className="border-[#ffba00] text-[#ffba00] hover:bg-[#ffba00] hover:text-white">
                     <DollarSign className="w-4 h-4 mr-2" />
                     Seed Greedy
                   </Button>
-                  <Button onClick={syncParticipantNames} variant="outline" className="border-[#00365F] text-[#00365F]">
+                  <Button onClick={syncParticipantNames} variant="outline" className="border-[#06051e] text-[#06051e]">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Sync Draft Names
                   </Button>
@@ -740,15 +740,15 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-[#D4AF37] shadow-xs">
-              <CardHeader className="bg-[#D4AF37]/10">
-                <CardTitle className="flex items-center gap-2 text-[#001A2E] text-md">
+            <Card className="border-2 border-[#ffba00] shadow-xs">
+              <CardHeader className="bg-[#ffba00]/10">
+                <CardTitle className="flex items-center gap-2 text-[#05041a] text-md">
                   <RefreshCw className={`w-5 h-5 ${fetchingScores ? 'animate-spin' : ''}`} />
                   ESPN Live Score Sync
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
-                <Button onClick={handleFetchScores} disabled={fetchingScores} className="w-full bg-[#00365F] hover:bg-[#001A2E] text-white py-6 text-lg font-bold">
+                <Button onClick={handleFetchScores} disabled={fetchingScores} className="w-full bg-[#06051e] hover:bg-[#05041a] text-white py-6 text-lg font-bold">
                   {fetchingScores ? 'Fetching from ESPN...' : 'Fetch Latest Scores'}
                 </Button>
                 <p className="text-xs text-muted-foreground italic text-center">
@@ -758,14 +758,14 @@ export default function AdminPage() {
             </Card>
 
             {/* Cutline Management */}
-            <Card className="border-2 border-[#00365F]/10 md:col-span-2 shadow-xs">
-              <CardHeader className="bg-[#F4F8FA]">
-                <CardTitle className="text-md text-[#00365F]">Event Settings</CardTitle>
+            <Card className="border-2 border-[#06051e]/10 md:col-span-2 shadow-xs">
+              <CardHeader className="bg-[#f8f9fa]">
+                <CardTitle className="text-md text-[#06051e]">Event Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 <div className="flex items-end gap-4 max-w-sm">
                   <div className="space-y-2 flex-1">
-                    <label className="text-sm font-medium text-[#001A2E]">Manual Cutline (e.g. 4 for +4)</label>
+                    <label className="text-sm font-medium text-[#05041a]">Manual Cutline (e.g. 4 for +4)</label>
                     <Input 
                       type="number" 
                       value={cutline} 
@@ -773,7 +773,7 @@ export default function AdminPage() {
                       placeholder="Leave empty to use automatic ESPN cutline"
                     />
                   </div>
-                  <Button onClick={updateCutline} className="bg-[#00365F] hover:bg-[#001A2E]">Save</Button>
+                  <Button onClick={updateCutline} className="bg-[#06051e] hover:bg-[#05041a]">Save</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   If set, any player whose Day 1 + Day 2 score is strictly greater than this value will be marked as cut, overriding the ESPN status.
@@ -782,10 +782,10 @@ export default function AdminPage() {
             </Card>
 
             {/* Finalization Playoff */}
-            <Card className="border-2 border-[#D4AF37]/50 md:col-span-2 shadow-xs">
-              <CardHeader className="bg-[#00365F] text-white">
+            <Card className="border-2 border-[#ffba00]/50 md:col-span-2 shadow-xs">
+              <CardHeader className="bg-[#06051e] text-white">
                 <CardTitle className="flex items-center gap-2 text-md">
-                  <Trophy className="w-5 h-5 text-[#D4AF37]" />
+                  <Trophy className="w-5 h-5 text-[#ffba00]" />
                   Tournament Finalization
                 </CardTitle>
               </CardHeader>
@@ -793,7 +793,7 @@ export default function AdminPage() {
                 <Button 
                   onClick={handleFinalizePlayoff} 
                   disabled={finalizingPlayoff} 
-                  className="w-full bg-[#D4AF37] hover:bg-[#8c7445] text-[#001A2E] py-6 text-lg font-bold uppercase tracking-widest"
+                  className="w-full bg-[#ffba00] hover:bg-[#d69d00] text-[#05041a] py-6 text-lg font-bold uppercase tracking-widest"
                 >
                   {finalizingPlayoff ? 'Running Playoff Logic...' : 'Run Scorecard Playoff & Show Final Standings'}
                 </Button>
@@ -833,9 +833,9 @@ export default function AdminPage() {
           />
 
           {/* Live Player Scores Table */}
-          <Card className="shadow-xs border-2 border-[#00365F]/10">
-            <CardHeader className="bg-[#F4F8FA]">
-              <CardTitle className="text-md text-[#00365F]">Live Player Scores ({scores.length})</CardTitle>
+          <Card className="shadow-xs border-2 border-[#06051e]/10">
+            <CardHeader className="bg-[#f8f9fa]">
+              <CardTitle className="text-md text-[#06051e]">Live Player Scores ({scores.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -873,23 +873,23 @@ export default function AdminPage() {
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#00365F] uppercase">Event Name</label>
+              <label className="text-xs font-bold text-[#06051e] uppercase">Event Name</label>
               <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Open Championship 2026" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#00365F] uppercase">Subtitle</label>
+              <label className="text-xs font-bold text-[#06051e] uppercase">Subtitle</label>
               <Input value={createSubtitle} onChange={(e) => setCreateSubtitle(e.target.value)} placeholder="Draft Dashboard" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#00365F] uppercase">ESPN Event ID</label>
+              <label className="text-xs font-bold text-[#06051e] uppercase">ESPN Event ID</label>
               <Input value={createEspnId} onChange={(e) => setCreateEspnId(e.target.value)} placeholder="e.g. 401811952" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#00365F] uppercase">Start Date (ISO 8601)</label>
+              <label className="text-xs font-bold text-[#06051e] uppercase">Start Date (ISO 8601)</label>
               <Input value={createStartDate} onChange={(e) => setCreateStartDate(e.target.value)} placeholder="2026-07-16T06:00:00Z" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#00365F] uppercase">End Date (ISO 8601)</label>
+              <label className="text-xs font-bold text-[#06051e] uppercase">End Date (ISO 8601)</label>
               <Input value={createEndDate} onChange={(e) => setCreateEndDate(e.target.value)} placeholder="2026-07-19T18:00:00Z" />
             </div>
             <div className="flex items-center gap-2 pt-2">
@@ -900,14 +900,14 @@ export default function AdminPage() {
                 onChange={(e) => setCreateMakeActive(e.target.checked)} 
                 className="w-4 h-4"
               />
-              <label htmlFor="create-make-active" className="text-xs font-medium text-[#001A2E] cursor-pointer">
+              <label htmlFor="create-make-active" className="text-xs font-medium text-[#05041a] cursor-pointer">
                 Set as Active Dashboard Event immediately
               </label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreateEvent} className="bg-[#00365F] hover:bg-[#001A2E] text-white">
+            <Button onClick={handleCreateEvent} className="bg-[#06051e] hover:bg-[#05041a] text-white">
               Create Event
             </Button>
           </DialogFooter>

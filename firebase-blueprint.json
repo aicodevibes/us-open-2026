@@ -37,15 +37,15 @@
     }
   },
   "firestore": {
-    "/usopen_participants/{participantId}": {
+    "/theopen_participants/{participantId}": {
       "schema": "Participant",
       "description": "Collection of draft participants."
     },
-    "/usopen_playerScores/{playerName}": {
+    "/theopen_playerScores/{playerName}": {
       "schema": "PlayerScore",
       "description": "Collection of golfer scores."
     },
-    "/usopen_config/tournament": {
+    "/theopen_config/tournament": {
       "schema": "TournamentConfig",
       "description": "Tournament configuration."
     }

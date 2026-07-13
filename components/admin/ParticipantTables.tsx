@@ -37,12 +37,12 @@ export function ParticipantTables({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
       {/* Main Participants Card */}
-      <Card className="border-2 border-[#00365F]/10">
-        <CardHeader className="bg-[#00365F] text-white flex flex-row items-center justify-between space-y-0 py-3">
+      <Card className="border-2 border-[#06051e]/10">
+        <CardHeader className="bg-[#06051e] text-white flex flex-row items-center justify-between space-y-0 py-3">
           <CardTitle className="text-lg">Main Participants ({participants.length})</CardTitle>
           <Button 
             onClick={() => setShowAddParticipant(true)} 
-            className="bg-[#D4AF37] hover:bg-[#B8942A] text-[#001A2E] h-8 py-0 px-3 flex items-center gap-1 font-bold text-xs"
+            className="bg-[#ffba00] hover:bg-[#e0a400] text-[#05041a] h-8 py-0 px-3 flex items-center gap-1 font-bold text-xs"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Add Participant
@@ -67,7 +67,7 @@ export function ParticipantTables({
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        className="h-8 w-8 text-[#00365F]"
+                        className="h-8 w-8 text-[#06051e]"
                         onClick={() => {
                           setEditingParticipant(p);
                           setNewPlayers(p.players.join(', '));
@@ -93,8 +93,8 @@ export function ParticipantTables({
       </Card>
 
       {/* Greedy Game Participants Card */}
-      <Card className="border-2 border-[#D4AF37]/30">
-        <CardHeader className="bg-[#D4AF37] text-[#001A2E]">
+      <Card className="border-2 border-[#ffba00]/30">
+        <CardHeader className="bg-[#ffba00] text-[#05041a]">
           <CardTitle className="text-lg flex items-center gap-2">
             <DollarSign className="w-5 h-5" />
             Greedy Game Participants ({greedyParticipants.length})
@@ -111,7 +111,7 @@ export function ParticipantTables({
             <TableBody>
               {greedyParticipants.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-bold text-[#00365F]">{p.name}</TableCell>
+                  <TableCell className="font-bold text-[#06051e]">{p.name}</TableCell>
                   <TableCell className="text-sm font-medium">{p.player}</TableCell>
                 </TableRow>
               ))}

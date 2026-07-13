@@ -60,11 +60,11 @@ export function FinalStandings({ participants, scores, cutline, playoffScores, p
 
   const getRankStyle = (rank: number) => {
     switch (rank) {
-      case 1: return 'bg-[#FFD700] text-[#001A2E] font-black';
-      case 2: return 'bg-[#C0C0C0] text-[#001A2E] font-black';
+      case 1: return 'bg-[#FFD700] text-[#05041a] font-black';
+      case 2: return 'bg-[#C0C0C0] text-[#05041a] font-black';
       case 3: return 'bg-[#CD7F32] text-white font-black';
       case 4: return 'bg-[#B87333] text-white font-black';
-      default: return 'bg-[#F4F8FA] text-[#00365F]';
+      default: return 'bg-[#f8f9fa] text-[#06051e]';
     }
   };
 
@@ -74,44 +74,44 @@ export function FinalStandings({ participants, scores, cutline, playoffScores, p
   };
 
   return (
-    <Card className="bg-white border-4 border-[#D4AF37] rounded-2xl shadow-2xl overflow-hidden mb-8">
-      <CardHeader className="bg-[#00365F] text-white p-6 border-b-4 border-[#D4AF37]">
+    <Card className="bg-white border-4 border-[#ffba00] rounded-2xl shadow-2xl overflow-hidden mb-8">
+      <CardHeader className="bg-[#06051e] text-white p-6 border-b-4 border-[#ffba00]">
         <CardTitle className="text-2xl font-serif font-bold uppercase tracking-widest flex items-center gap-3">
-          <Trophy className="w-8 h-8 text-[#D4AF37]" />
+          <Trophy className="w-8 h-8 text-[#ffba00]" />
           Official Final Standings
         </CardTitle>
-        <p className="text-[#D4AF37] text-sm uppercase tracking-widest font-bold mt-2">
+        <p className="text-[#ffba00] text-sm uppercase tracking-widest font-bold mt-2">
           Tournament Complete
         </p>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
-          <TableHeader className="bg-[#F4F8FA]">
-            <TableRow className="hover:bg-transparent border-b-2 border-[#00365F]/10">
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] w-20 text-center">Final Pos</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px]">Participant</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-right">Total Score</TableHead>
-              <TableHead className="text-[#00365F] font-bold uppercase text-[12px] text-right pr-8">Payout</TableHead>
+          <TableHeader className="bg-[#f8f9fa]">
+            <TableRow className="hover:bg-transparent border-b-2 border-[#06051e]/10">
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] w-20 text-center">Final Pos</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px]">Participant</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-right">Total Score</TableHead>
+              <TableHead className="text-[#06051e] font-bold uppercase text-[12px] text-right pr-8">Payout</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {top4.map((p, idx) => (
               <TableRow 
                 key={p.participant.id}
-                className="border-b border-[#00365F]/10 hover:bg-[#00365F]/5 transition-colors"
+                className="border-b border-[#06051e]/10 hover:bg-[#06051e]/5 transition-colors"
               >
                 <TableCell className="text-center py-6">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto text-lg ${getRankStyle(p.rank)}`}>
                     {p.rank}
                   </div>
                 </TableCell>
-                <TableCell className="font-bold text-[#00365F] text-xl">
+                <TableCell className="font-bold text-[#06051e] text-xl">
                   {p.participant.name}
                 </TableCell>
-                <TableCell className="text-right font-bold text-2xl text-[#00365F]">
+                <TableCell className="text-right font-bold text-2xl text-[#06051e]">
                   {formatScore(p.total)}
                 </TableCell>
-                <TableCell className="text-right font-black text-2xl text-[#D4AF37] pr-8">
+                <TableCell className="text-right font-black text-2xl text-[#ffba00] pr-8">
                   {prizes[idx]?.amount || '$0.00'}
                 </TableCell>
               </TableRow>

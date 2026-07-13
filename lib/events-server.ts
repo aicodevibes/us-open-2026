@@ -10,7 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function getActiveEventIdServer(): Promise<string> {
   try {
-    const activeDoc = await adminDb.collection('golf_config').doc('activeEvent').get();
+    const activeDoc = await adminDb.collection('theopen_config').doc('activeEvent').get();
     if (activeDoc.exists) {
       const data = activeDoc.data();
       if (data?.activeEventId) {
@@ -20,16 +20,16 @@ export async function getActiveEventIdServer(): Promise<string> {
   } catch (e) {
     console.error('Error fetching active event ID server side:', e);
   }
-  return ESPN_EVENT_ID; // Fallback to "401811952"
+  return ESPN_EVENT_ID; // Fallback to the current tournament ID
 }
 
 /**
- * SERVER SIDE: Ensures the event document exists in `golf_events`.
- * If it is the default tournament (401811952) and doesn't exist,
+ * SERVER SIDE: Ensures the event document exists in `theopen_events`.
+ * If it is the default tournament and doesn't exist,
  * it runs the automatic migration of legacy root collections into this event's subcollections.
  */
 export async function ensureEventExistsServer(eventId: string): Promise<TournamentEvent> {
-  const eventRef = adminDb.collection('golf_events').doc(eventId);
+  const eventRef = adminDb.collection('theopen_events').doc(eventId);
   const eventSnap = await eventRef.get();
 
   if (eventSnap.exists) {
@@ -39,12 +39,12 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
 
   // If this is the default tournament, perform the data migration
   if (eventId === ESPN_EVENT_ID) {
-    console.log(`Default event ${eventId} does not exist in 'golf_events'. Migrating legacy data...`);
+    console.log(`Default event ${eventId} does not exist in 'theopen_events'. Migrating legacy data...`);
 
     // Get legacy config if it exists
     let legacyConfig: any = null;
     try {
-      const legacyConfigSnap = await adminDb.collection('usopen_config').doc('tournament').get();
+      const legacyConfigSnap = await adminDb.collection('theopen_config').doc('tournament').get();
       if (legacyConfigSnap.exists) {
         legacyConfig = legacyConfigSnap.data();
       }
@@ -67,11 +67,11 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
     batch.set(eventRef, newEvent);
 
     // Save active event configuration
-    batch.set(adminDb.collection('golf_config').doc('activeEvent'), { activeEventId: eventId }, { merge: true });
+    batch.set(adminDb.collection('theopen_config').doc('activeEvent'), { activeEventId: eventId }, { merge: true });
 
     // Migrate participants
     try {
-      const snap = await adminDb.collection('usopen_participants').get();
+      const snap = await adminDb.collection('theopen_participants').get();
       snap.docs.forEach((docSnap) => {
         const targetRef = eventRef.collection('participants').doc(docSnap.id);
         batch.set(targetRef, docSnap.data());
@@ -82,7 +82,7 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
 
     // Migrate greedy participants
     try {
-      const snap = await adminDb.collection('usopen_greedyParticipants').get();
+      const snap = await adminDb.collection('theopen_greedyParticipants').get();
       snap.docs.forEach((docSnap) => {
         const targetRef = eventRef.collection('greedyParticipants').doc(docSnap.id);
         batch.set(targetRef, docSnap.data());
@@ -93,7 +93,7 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
 
     // Migrate player scores
     try {
-      const snap = await adminDb.collection('usopen_playerScores').get();
+      const snap = await adminDb.collection('theopen_playerScores').get();
       snap.docs.forEach((docSnap) => {
         const targetRef = eventRef.collection('playerScores').doc(docSnap.id);
         batch.set(targetRef, docSnap.data());
@@ -104,7 +104,7 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
 
     // Migrate playoff scores
     try {
-      const snap = await adminDb.collection('usopen_playoffScores').get();
+      const snap = await adminDb.collection('theopen_playoffScores').get();
       snap.docs.forEach((docSnap) => {
         const targetRef = eventRef.collection('playoffScores').doc(docSnap.id);
         batch.set(targetRef, docSnap.data());
@@ -135,13 +135,13 @@ export async function ensureEventExistsServer(eventId: string): Promise<Tourname
 }
 
 /**
- * SERVER SIDE: Fetch all events in golf_events.
+ * SERVER SIDE: Fetch all events in theopen_events.
  */
 export async function getAllEventsServer(): Promise<TournamentEvent[]> {
   const activeEventId = await getActiveEventIdServer();
   await ensureEventExistsServer(activeEventId); // Auto-migrate if needed
 
-  const snap = await adminDb.collection('golf_events').get();
+  const snap = await adminDb.collection('theopen_events').get();
   return snap.docs.map((docSnap) => {
     const data = docSnap.data();
     return {
