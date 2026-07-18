@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, DollarSign, Info, Timer } from 'lucide-react';
-import { GREEDY_PRIZE_POOL } from '@/lib/constants';
+import { GREEDY_PRIZE_POOL, TOURNAMENT_NAME } from '@/lib/constants';
 import { RefreshTimer } from '@/components/RefreshTimer';
 import { isPlayerCut } from '@/lib/scoring';
 import { GreedyParticipant, PlayerScore } from '@/types';
@@ -41,7 +41,7 @@ export default async function GreedyPage() {
   });
 
   const eventData = eventSnap.data();
-  const eventName = eventData?.name || "US Open";
+  const eventName = eventData?.name || TOURNAMENT_NAME;
   const cutline = eventData?.cutline ?? null;
   const lastUpdated = eventData?.lastUpdated ? eventData.lastUpdated.toDate() : null;
 

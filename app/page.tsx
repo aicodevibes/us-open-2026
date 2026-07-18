@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, DollarSign, Info, RefreshCw, Wallet } from 'lucide-react';
 import { FinalStandings } from '@/components/FinalStandings';
-import { PRIZES, DAILY_BONUSES } from '@/lib/constants';
+import { PRIZES, DAILY_BONUSES, TOURNAMENT_NAME, TOURNAMENT_SUBTITLE } from '@/lib/constants';
 import { Countdown } from '@/components/Countdown';
 import { LeaderboardTable } from '@/components/LeaderboardTable';
 import { PlayerScoreboard } from '@/components/PlayerScoreboard';
@@ -34,15 +34,14 @@ const formatScore = (score: number | null | undefined) => {
 export default async function Dashboard() {
   // 1. Determine active event ID and ensure it exists (running migration if necessary)
   const activeEventId = await getActiveEventIdServer();
-  await ensureEventExistsServer(activeEventId);
+  const eventData = await ensureEventExistsServer(activeEventId);
 
   const eventRef = adminDb.collection('theopen_events').doc(activeEventId);
 
-  // Fetch live tournament records directly on the secure server
-  const [participantsSnap, scoresSnap, eventSnap] = await Promise.all([
+  // Fetch live tournament records directly on the secure server (omitting duplicate eventRef.get())
+  const [participantsSnap, scoresSnap] = await Promise.all([
     eventRef.collection('participants').get(),
     eventRef.collection('playerScores').get(),
-    eventRef.get(),
   ]);
 
   const participants = participantsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant));
@@ -53,12 +52,16 @@ export default async function Dashboard() {
     scores[data.playerName] = data;
   });
 
-  const eventData = eventSnap.data();
-  const eventName = eventData?.name || "US Open";
-  const eventSubtitle = eventData?.subtitle || "Draft Dashboard";
+  const eventName = eventData?.name || TOURNAMENT_NAME;
+  const eventSubtitle = eventData?.subtitle || TOURNAMENT_SUBTITLE;
   const cutline = eventData?.cutline ?? null;
   const playoffComplete = eventData?.playoffComplete ?? false;
-  const lastUpdated = eventData?.lastUpdated ? eventData.lastUpdated.toDate() : null;
+  
+  // Safe Date conversion for lastUpdated
+  const lastUpdated = eventData?.lastUpdated
+    ? (typeof eventData.lastUpdated.toDate === 'function' ? eventData.lastUpdated.toDate() : new Date(eventData.lastUpdated))
+    : null;
+    
   const startDate = eventData?.startDate || "";
   const endDate = eventData?.endDate || "";
 

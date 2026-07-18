@@ -9,3 +9,5 @@ tsconfig.tsbuildinfo
 .firebase
 .agents
 scratch/
+# Traces
+*.json.gz

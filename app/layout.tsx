@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
+import { TOURNAMENT_NAME } from '@/lib/constants';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -14,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'US Open 2026 Dashboard',
-  description: 'Track your US Open 2026 draft scores and performance.',
+  title: `${TOURNAMENT_NAME} Dashboard`,
+  description: `Track your ${TOURNAMENT_NAME} draft scores and performance.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

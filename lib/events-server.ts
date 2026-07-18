@@ -5,15 +5,26 @@ import { TournamentEvent } from '@/types';
 import { TOURNAMENT_NAME, TOURNAMENT_START_DATE, TOURNAMENT_END_DATE, ESPN_EVENT_ID } from './constants';
 import { FieldValue } from 'firebase-admin/firestore';
 
+let cachedActiveEventId: string | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 60000; // Cache active event ID config for 60 seconds
+
 /**
  * SERVER SIDE: Retrieve the active event ID.
  */
 export async function getActiveEventIdServer(): Promise<string> {
+  const now = Date.now();
+  if (cachedActiveEventId && (now - lastCacheTime < CACHE_TTL_MS)) {
+    return cachedActiveEventId;
+  }
+
   try {
     const activeDoc = await adminDb.collection('theopen_config').doc('activeEvent').get();
     if (activeDoc.exists) {
       const data = activeDoc.data();
       if (data?.activeEventId) {
+        cachedActiveEventId = data.activeEventId;
+        lastCacheTime = now;
         return data.activeEventId;
       }
     }
